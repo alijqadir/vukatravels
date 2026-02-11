@@ -16,6 +16,7 @@ const storageDir = path.join(__dirname, "storage");
 if (!fs.existsSync(storageDir)) {
   fs.mkdirSync(storageDir, { recursive: true });
 }
+const errorLogPath = path.join(storageDir, "server-errors.log");
 
 function cleanValue(value) {
   if (value === null || value === undefined) return "";
@@ -41,6 +42,19 @@ function pickValue(data, keys) {
 function formatTimestamp(date = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+}
+
+function logError(prefix, error) {
+  const message =
+    error instanceof Error
+      ? `${error.message}${error.stack ? `\n${error.stack}` : ""}`
+      : String(error);
+  const line = `[${formatTimestamp()}] ${prefix} ${message}\n`;
+  try {
+    fs.appendFileSync(errorLogPath, line, { encoding: "utf8" });
+  } catch {
+    // Ignore logging failures
+  }
 }
 
 const requiredByType = {
@@ -257,6 +271,7 @@ async function handleSubmission(req, res) {
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error("Email notification failed:", error);
+    logError("Email notification failed:", error);
     return res.status(500).json({ error: error instanceof Error ? error.message : "Email failed" });
   }
 }
