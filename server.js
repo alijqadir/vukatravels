@@ -193,6 +193,8 @@ function createTransporter() {
   const port = Number(process.env.SMTP_PORT || 465);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
+  const allowSelfSigned = process.env.SMTP_ALLOW_SELF_SIGNED === "true";
+  const logger = process.env.SMTP_LOG === "true";
 
   if (!host || !user || !pass) {
     throw new Error("SMTP configuration is missing");
@@ -205,6 +207,9 @@ function createTransporter() {
     port,
     secure,
     auth: { user, pass },
+    logger,
+    debug: logger,
+    tls: allowSelfSigned ? { rejectUnauthorized: false } : undefined,
   });
 }
 
@@ -251,6 +256,7 @@ async function handleSubmission(req, res) {
     await sendNotificationEmail(fields);
     return res.status(200).json({ ok: true });
   } catch (error) {
+    console.error("Email notification failed:", error);
     return res.status(500).json({ error: error instanceof Error ? error.message : "Email failed" });
   }
 }
