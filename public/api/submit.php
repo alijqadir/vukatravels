@@ -156,6 +156,36 @@ function log_mail_error(string $message): void {
   );
 }
 
+function log_sheets_error(string $message): void {
+  $storageDir = __DIR__ . '/../storage';
+  $errorLog = $storageDir . '/sheets-errors.log';
+  @file_put_contents(
+    $errorLog,
+    '[' . gmdate('Y-m-d H:i:s') . '] ' . $message . PHP_EOL,
+    FILE_APPEND | LOCK_EX
+  );
+}
+
+function respond_and_continue(array $payload): void {
+  http_response_code(200);
+  $body = json_encode($payload);
+  echo $body;
+
+  if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+    return;
+  }
+
+  if (function_exists('apache_setenv')) {
+    @apache_setenv('no-gzip', '1');
+  }
+  @ini_set('zlib.output_compression', '0');
+  @ini_set('output_buffering', '0');
+  header('Content-Length: ' . strlen($body));
+  @ob_end_flush();
+  flush();
+}
+
 $csvPath = $storageDir . '/submissions.csv';
 $csvHandle = @fopen($csvPath, 'a');
 if (!$csvHandle) {
@@ -308,6 +338,13 @@ if ($smtpConfig && isset($smtpConfig['from'])) {
   $from = $smtpConfig['from'];
 }
 
+// Respond immediately after local logging to avoid delays.
+respond_and_continue(['ok' => true]);
+
+ignore_user_abort(true);
+set_time_limit(30);
+
+// Send email notification in background.
 try {
   if ($smtpConfig) {
     smtp_send($smtpConfig, $to, $from, $replyTo, $subjectLine, $body);
@@ -321,7 +358,144 @@ try {
   }
 } catch (Throwable $error) {
   log_mail_error($error instanceof Throwable ? $error->getMessage() : 'mail failed');
-  json_response(500, ['error' => 'Submission saved, but email notification failed.']);
 }
 
-json_response(200, ['ok' => true]);
+function base64url_encode(string $data): string {
+  return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+function get_sheets_config(): ?array {
+  $configFile = __DIR__ . '/sheets-config.php';
+  if (!is_file($configFile)) {
+    return null;
+  }
+  $config = include $configFile;
+  if (!is_array($config)) {
+    return null;
+  }
+  if (!empty($config['apps_script_url'])) {
+    return $config;
+  }
+  if (empty($config['sheet_id']) || empty($config['credentials_path'])) {
+    return null;
+  }
+  return $config;
+}
+
+function google_access_token(array $creds): string {
+  $now = time();
+  $header = base64url_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+  $claims = [
+    'iss' => $creds['client_email'],
+    'scope' => 'https://www.googleapis.com/auth/spreadsheets',
+    'aud' => $creds['token_uri'],
+    'iat' => $now,
+    'exp' => $now + 3600,
+  ];
+  $payload = base64url_encode(json_encode($claims));
+  $signatureInput = $header . '.' . $payload;
+  $signature = '';
+  $privateKey = $creds['private_key'];
+  if (!openssl_sign($signatureInput, $signature, $privateKey, 'SHA256')) {
+    throw new RuntimeException('Unable to sign JWT');
+  }
+  $jwt = $signatureInput . '.' . base64url_encode($signature);
+
+  $postData = http_build_query([
+    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+    'assertion' => $jwt,
+  ]);
+
+  $ch = curl_init($creds['token_uri']);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+  $response = curl_exec($ch);
+  if ($response === false) {
+    throw new RuntimeException('Token request failed: ' . curl_error($ch));
+  }
+  $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  if ($status >= 300) {
+    throw new RuntimeException('Token request error: ' . $response);
+  }
+  $data = json_decode($response, true);
+  if (!is_array($data) || empty($data['access_token'])) {
+    throw new RuntimeException('Invalid token response');
+  }
+  return $data['access_token'];
+}
+
+function append_to_sheet(array $config, array $fields): void {
+  if (!empty($config['apps_script_url'])) {
+    $payload = json_encode([
+      'values' => [array_values($fields)],
+    ]);
+    $ch = curl_init($config['apps_script_url']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    $response = curl_exec($ch);
+    if ($response === false) {
+      throw new RuntimeException('Apps Script append failed: ' . curl_error($ch));
+    }
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($status >= 300) {
+      throw new RuntimeException('Apps Script error: ' . $response);
+    }
+    return;
+  }
+
+  $credsPath = $config['credentials_path'];
+  if (!is_file($credsPath)) {
+    throw new RuntimeException('Sheets credentials not found');
+  }
+  $creds = json_decode(file_get_contents($credsPath), true);
+  if (!is_array($creds)) {
+    throw new RuntimeException('Invalid sheets credentials JSON');
+  }
+  $token = google_access_token($creds);
+  $sheetId = $config['sheet_id'];
+  $range = $config['range'] ?? 'Sheet1!A1';
+
+  $values = array_values($fields);
+  $payload = json_encode([
+    'values' => [$values],
+  ]);
+
+  $url = 'https://sheets.googleapis.com/v4/spreadsheets/' . urlencode($sheetId) .
+    '/values/' . urlencode($range) . ':append?valueInputOption=USER_ENTERED';
+
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer ' . $token,
+    'Content-Type: application/json',
+  ]);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+  $response = curl_exec($ch);
+  if ($response === false) {
+    throw new RuntimeException('Sheets append failed: ' . curl_error($ch));
+  }
+  $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  if ($status >= 300) {
+    throw new RuntimeException('Sheets append error: ' . $response);
+  }
+}
+
+// Append to Google Sheets in background if configured.
+try {
+  $sheetsConfig = get_sheets_config();
+  if ($sheetsConfig) {
+    append_to_sheet($sheetsConfig, $fields);
+  }
+} catch (Throwable $error) {
+  log_sheets_error($error instanceof Throwable ? $error->getMessage() : 'sheets failed');
+}
+
+exit;
