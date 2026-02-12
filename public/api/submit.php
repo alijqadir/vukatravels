@@ -146,6 +146,16 @@ if (!is_dir($storageDir)) {
   @mkdir($storageDir, 0755, true);
 }
 
+function log_mail_error(string $message): void {
+  $storageDir = __DIR__ . '/../storage';
+  $errorLog = $storageDir . '/mail-errors.log';
+  @file_put_contents(
+    $errorLog,
+    '[' . gmdate('Y-m-d H:i:s') . '] ' . $message . PHP_EOL,
+    FILE_APPEND | LOCK_EX
+  );
+}
+
 $csvPath = $storageDir . '/submissions.csv';
 $csvHandle = @fopen($csvPath, 'a');
 if (!$csvHandle) {
@@ -204,16 +214,113 @@ $headers[] = 'Reply-To: ' . $replyTo;
 $headers[] = 'Content-Type: text/plain; charset=UTF-8';
 $headersStr = implode("\r\n", $headers);
 
-$mailOk = @mail($to, $subjectLine, $body, $headersStr, '-f' . $from);
-if (!$mailOk) {
-  $errorLog = $storageDir . '/mail-errors.log';
-  $lastError = error_get_last();
-  $message = $lastError && isset($lastError['message']) ? $lastError['message'] : 'mail() failed';
-  @file_put_contents(
-    $errorLog,
-    '[' . $submittedAt . '] ' . $message . PHP_EOL,
-    FILE_APPEND | LOCK_EX
-  );
+function smtp_read($socket): string {
+  $data = '';
+  while ($line = fgets($socket, 515)) {
+    $data .= $line;
+    if (preg_match('/^\d{3} /', $line)) {
+      break;
+    }
+  }
+  return $data;
+}
+
+function smtp_command($socket, string $command, array $expectCodes): string {
+  if ($command !== '') {
+    fwrite($socket, $command . "\r\n");
+  }
+  $response = smtp_read($socket);
+  $code = (int)substr($response, 0, 3);
+  if (!in_array($code, $expectCodes, true)) {
+    throw new RuntimeException('SMTP error (' . $command . '): ' . trim($response));
+  }
+  return $response;
+}
+
+function smtp_send(array $config, string $to, string $from, string $replyTo, string $subject, string $body): void {
+  $host = $config['host'] ?? '';
+  $port = (int)($config['port'] ?? 465);
+  $secure = $config['secure'] ?? 'ssl';
+  $username = $config['username'] ?? '';
+  $password = $config['password'] ?? '';
+
+  if ($host === '' || $username === '' || $password === '') {
+    throw new RuntimeException('SMTP config is incomplete');
+  }
+
+  $remote = $secure === 'ssl' ? "ssl://{$host}:{$port}" : "{$host}:{$port}";
+  $socket = stream_socket_client($remote, $errno, $errstr, 30, STREAM_CLIENT_CONNECT);
+  if (!$socket) {
+    throw new RuntimeException('SMTP connect failed: ' . $errstr . ' (' . $errno . ')');
+  }
+  stream_set_timeout($socket, 30);
+
+  smtp_read($socket);
+  smtp_command($socket, 'EHLO vukatravels.co.uk', [250]);
+
+  if ($secure === 'tls') {
+    smtp_command($socket, 'STARTTLS', [220]);
+    if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+      throw new RuntimeException('Failed to start TLS');
+    }
+    smtp_command($socket, 'EHLO vukatravels.co.uk', [250]);
+  }
+
+  smtp_command($socket, 'AUTH LOGIN', [334]);
+  smtp_command($socket, base64_encode($username), [334]);
+  smtp_command($socket, base64_encode($password), [235]);
+
+  smtp_command($socket, 'MAIL FROM:<' . $from . '>', [250]);
+  smtp_command($socket, 'RCPT TO:<' . $to . '>', [250, 251]);
+  smtp_command($socket, 'DATA', [354]);
+
+  $headers = [
+    'From: ' . $from,
+    'Reply-To: ' . $replyTo,
+    'To: ' . $to,
+    'Subject: ' . $subject,
+    'Date: ' . date('r'),
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset=UTF-8',
+  ];
+  $message = implode("\r\n", $headers) . "\r\n\r\n" . $body;
+  $message = str_replace("\r\n.", "\r\n..", str_replace("\n", "\r\n", $message));
+
+  fwrite($socket, $message . "\r\n.\r\n");
+  smtp_read($socket);
+  smtp_command($socket, 'QUIT', [221, 250]);
+  fclose($socket);
+}
+
+$configFile = __DIR__ . '/mail-config.php';
+$smtpConfig = null;
+if (is_file($configFile)) {
+  $loaded = include $configFile;
+  if (is_array($loaded)) {
+    $smtpConfig = $loaded;
+  }
+}
+
+if ($smtpConfig && isset($smtpConfig['to'])) {
+  $to = $smtpConfig['to'];
+}
+if ($smtpConfig && isset($smtpConfig['from'])) {
+  $from = $smtpConfig['from'];
+}
+
+try {
+  if ($smtpConfig) {
+    smtp_send($smtpConfig, $to, $from, $replyTo, $subjectLine, $body);
+  } else {
+    $mailOk = @mail($to, $subjectLine, $body, $headersStr, '-f' . $from);
+    if (!$mailOk) {
+      $lastError = error_get_last();
+      $message = $lastError && isset($lastError['message']) ? $lastError['message'] : 'mail() failed';
+      throw new RuntimeException($message);
+    }
+  }
+} catch (Throwable $error) {
+  log_mail_error($error instanceof Throwable ? $error->getMessage() : 'mail failed');
   json_response(500, ['error' => 'Submission saved, but email notification failed.']);
 }
 
