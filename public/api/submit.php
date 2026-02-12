@@ -184,7 +184,7 @@ if ($csvRead) {
 }
 
 $to = 'info@vukatravels.co.uk';
-$from = 'no-reply@vukatravels.co.uk';
+$from = 'info@vukatravels.co.uk';
 $replyTo = $email !== '' ? $email : $from;
 $subjectLine = '[Website] ' . ucwords(str_replace('_', ' ', $formType)) . ' submission';
 
@@ -204,8 +204,16 @@ $headers[] = 'Reply-To: ' . $replyTo;
 $headers[] = 'Content-Type: text/plain; charset=UTF-8';
 $headersStr = implode("\r\n", $headers);
 
-$mailOk = @mail($to, $subjectLine, $body, $headersStr);
+$mailOk = @mail($to, $subjectLine, $body, $headersStr, '-f' . $from);
 if (!$mailOk) {
+  $errorLog = $storageDir . '/mail-errors.log';
+  $lastError = error_get_last();
+  $message = $lastError && isset($lastError['message']) ? $lastError['message'] : 'mail() failed';
+  @file_put_contents(
+    $errorLog,
+    '[' . $submittedAt . '] ' . $message . PHP_EOL,
+    FILE_APPEND | LOCK_EX
+  );
   json_response(500, ['error' => 'Submission saved, but email notification failed.']);
 }
 
