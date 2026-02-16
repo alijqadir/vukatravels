@@ -156,6 +156,25 @@ function log_mail_error(string $message): void {
   );
 }
 
+function resolve_config_path(string $filename): ?string {
+  $envDir = getenv('VUKA_CONFIG_DIR') ?: '';
+  $candidates = [];
+  if ($envDir !== '') {
+    $candidates[] = rtrim($envDir, "/\\") . DIRECTORY_SEPARATOR . $filename;
+  }
+  $candidates[] = __DIR__ . DIRECTORY_SEPARATOR . $filename;
+  $candidates[] = __DIR__ . '/../storage/' . $filename;
+  // Hostinger home directory (sibling of public_html)
+  $candidates[] = __DIR__ . '/../../vukatravels-config/' . $filename;
+
+  foreach ($candidates as $path) {
+    if (is_file($path)) {
+      return $path;
+    }
+  }
+  return null;
+}
+
 function log_sheets_error(string $message): void {
   $storageDir = __DIR__ . '/../storage';
   $errorLog = $storageDir . '/sheets-errors.log';
@@ -322,9 +341,9 @@ function smtp_send(array $config, string $to, string $from, string $replyTo, str
   fclose($socket);
 }
 
-$configFile = __DIR__ . '/mail-config.php';
+$configFile = resolve_config_path('mail-config.php');
 $smtpConfig = null;
-if (is_file($configFile)) {
+if ($configFile) {
   $loaded = include $configFile;
   if (is_array($loaded)) {
     $smtpConfig = $loaded;
@@ -365,8 +384,8 @@ function base64url_encode(string $data): string {
 }
 
 function get_sheets_config(): ?array {
-  $configFile = __DIR__ . '/sheets-config.php';
-  if (!is_file($configFile)) {
+  $configFile = resolve_config_path('sheets-config.php');
+  if (!$configFile) {
     return null;
   }
   $config = include $configFile;
