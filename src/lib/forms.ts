@@ -2,6 +2,37 @@ export type FormPayload = Record<string, unknown>;
 
 const DEFAULT_ENDPOINT = import.meta.env.VITE_FORM_ENDPOINT || "/api/submit.php";
 
+declare global {
+  interface Window {
+    dataLayer?: Record<string, unknown>[];
+  }
+}
+
+function pushDataLayerEvent(formType: string, payload: FormPayload) {
+  if (typeof window === "undefined") return;
+
+  const email = typeof payload.email === "string" ? payload.email : "";
+  const phone = typeof payload.phone === "string" ? payload.phone : "";
+
+  const event: Record<string, unknown> = {
+    event: "generate_lead",
+    form_type: formType,
+    lead_source: "website",
+    currency: "GBP",
+    value: 0,
+  };
+
+  if (email || phone) {
+    event.user_data = {
+      email: email || undefined,
+      phone: phone || undefined,
+    };
+  }
+
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push(event);
+}
+
 export async function submitForm(formType: string, payload: FormPayload) {
   const res = await fetch(DEFAULT_ENDPOINT, {
     method: "POST",
@@ -32,5 +63,6 @@ export async function submitForm(formType: string, payload: FormPayload) {
     throw new Error(message);
   }
 
+  pushDataLayerEvent(formType, payload);
   return data;
 }
