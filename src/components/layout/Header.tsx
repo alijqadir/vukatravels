@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/vuka-logo.jpeg";
 
+const BLOG_URL = import.meta.env.VITE_BLOG_URL || "/blog";
+
 const navigation = [
   { name: "Home", href: "/" },
   { name: "About Us", href: "/about" },
@@ -16,6 +18,7 @@ const navigation = [
       { name: "Holidays", href: "/holidays" },
     ],
   },
+  { name: "Blog", href: BLOG_URL, external: true },
   { name: "FAQs", href: "/faqs" },
   { name: "Contact Us", href: "/contact" },
 ];
@@ -82,6 +85,14 @@ export function Header() {
                       <span className="sm:hidden">{item.name === "Services" ? "Services" : item.name}</span>
                       <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                     </button>
+                  ) : item.external ? (
+                    <a
+                      href={item.href}
+                      className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap text-foreground hover:text-gold"
+                    >
+                      <span className="hidden sm:inline">{item.name}</span>
+                      <span className="sm:hidden">{item.name}</span>
+                    </a>
                   ) : (
                     <Link
                       to={item.href}

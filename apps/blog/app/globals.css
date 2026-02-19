@@ -1,0 +1,604 @@
+:root {
+  --background: 0 0% 100%;
+  --foreground: 215 50% 15%;
+
+  --primary: 215 60% 20%;
+  --primary-foreground: 45 100% 97%;
+
+  --secondary: 210 25% 96%;
+  --secondary-foreground: 215 50% 20%;
+
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 15% 45%;
+
+  --border: 210 20% 88%;
+
+  --navy: 215 60% 20%;
+  --navy-dark: 215 65% 12%;
+  --navy-light: 215 45% 35%;
+
+  --gold: 40 75% 50%;
+  --gold-light: 45 80% 65%;
+  --gold-dark: 35 70% 40%;
+
+  --gradient-gold: linear-gradient(135deg, hsl(40 75% 50%) 0%, hsl(35 70% 45%) 100%);
+  --gradient-navy: linear-gradient(180deg, hsl(215 60% 18%) 0%, hsl(215 65% 12%) 100%);
+
+  --shadow-md: 0 8px 24px -8px hsl(215 60% 20% / 0.15);
+  --shadow-lg: 0 16px 48px -12px hsl(215 60% 20% / 0.2);
+  --shadow-gold: 0 8px 32px -8px hsl(40 75% 50% / 0.3);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-body), "Open Sans", sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-family: var(--font-display), "Montserrat", sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.vuka-shell {
+  width: min(1240px, 92vw);
+  margin: 0 auto;
+}
+
+.vuka-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+
+.vuka-topbar {
+  background: hsl(var(--navy-dark));
+}
+
+.vuka-topbar-row {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.vuka-contact-links {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.vuka-contact-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: hsl(var(--gold-light));
+  font-size: 0.84rem;
+  transition: color 0.2s ease;
+}
+
+.vuka-contact-links a:hover {
+  color: hsl(var(--gold));
+}
+
+.vuka-topbar-note {
+  margin: 0;
+  color: hsl(var(--gold-light));
+  font-size: 0.82rem;
+}
+
+.vuka-divider {
+  margin: 0 0.25rem;
+}
+
+.vuka-nav {
+  background: hsl(var(--background) / 0.95);
+  border-bottom: 1px solid hsl(var(--border));
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-md);
+}
+
+.vuka-nav-row {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.vuka-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.vuka-brand-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 999px;
+}
+
+.vuka-brand-text {
+  font-family: var(--font-display), "Montserrat", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.vuka-brand-main {
+  color: hsl(var(--navy));
+}
+
+.vuka-brand-accent {
+  color: hsl(var(--gold));
+}
+
+.vuka-menu {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.vuka-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.5rem;
+  color: hsl(var(--foreground));
+  font-size: 0.86rem;
+  font-weight: 600;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.vuka-menu-item:hover,
+.vuka-menu-item-active {
+  color: hsl(var(--gold));
+}
+
+.vuka-menu-button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.vuka-dropdown {
+  position: relative;
+}
+
+.vuka-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  min-width: 175px;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.6rem;
+  box-shadow: var(--shadow-lg);
+  padding: 0.35rem 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.vuka-dropdown:hover .vuka-dropdown-menu,
+.vuka-dropdown:focus-within .vuka-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.vuka-dropdown-item {
+  display: block;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.vuka-dropdown-item:hover {
+  color: hsl(var(--gold));
+  background: hsl(var(--secondary));
+}
+
+.vuka-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.62rem 1rem;
+  border-radius: 0.68rem;
+  font-family: var(--font-display), "Montserrat", sans-serif;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: hsl(var(--navy-dark));
+  background: var(--gradient-gold);
+  box-shadow: var(--shadow-gold);
+  transition: transform 0.2s ease;
+}
+
+.vuka-cta:hover {
+  transform: translateY(-1px);
+}
+
+.site-main {
+  min-height: 100vh;
+  padding-top: 122px;
+}
+
+.container {
+  width: min(1080px, 92vw);
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.page-title {
+  font-size: clamp(2rem, 3.1vw, 2.8rem);
+  color: hsl(var(--navy));
+}
+
+.page-subtitle {
+  margin-top: 0.85rem;
+  max-width: 72ch;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.65;
+}
+
+.notice {
+  margin-top: 1.25rem;
+  border: 1px dashed hsl(var(--gold) / 0.7);
+  border-radius: 0.8rem;
+  padding: 0.95rem;
+  background: hsl(var(--gold) / 0.1);
+  color: hsl(var(--gold-dark));
+}
+
+.notice code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.post-grid {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1rem;
+}
+
+.post-card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.9rem;
+  background: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(45 30% 97%) 100%);
+  padding: 1rem;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.post-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.post-card h2 {
+  font-size: 1.16rem;
+}
+
+.post-card h2:hover {
+  color: hsl(var(--gold-dark));
+}
+
+.post-meta {
+  margin-top: 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9rem;
+}
+
+.post-excerpt {
+  margin-top: 0.65rem;
+  color: hsl(var(--foreground));
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.pill {
+  display: inline-block;
+  margin-right: 0.35rem;
+  margin-top: 0.65rem;
+  border: 1px solid hsl(var(--gold) / 0.6);
+  color: hsl(var(--gold-dark));
+  border-radius: 999px;
+  padding: 0.2rem 0.62rem;
+  font-size: 0.74rem;
+  background: hsl(var(--gold) / 0.1);
+  font-weight: 600;
+}
+
+.article {
+  width: min(900px, 92vw);
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.article-title {
+  font-size: clamp(2rem, 3.3vw, 3rem);
+  color: hsl(var(--navy));
+}
+
+.article-meta {
+  margin-top: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.95rem;
+}
+
+.article-image {
+  margin-top: 1.3rem;
+  border-radius: 1rem;
+  width: 100%;
+  height: auto;
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-md);
+}
+
+.richtext {
+  margin-top: 1.7rem;
+  padding: 1.3rem;
+  border-radius: 1rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  line-height: 1.78;
+  box-shadow: var(--shadow-md);
+}
+
+.richtext h2,
+.richtext h3,
+.richtext h4 {
+  margin-top: 1.6rem;
+}
+
+.richtext p,
+.richtext ul,
+.richtext ol,
+.richtext blockquote {
+  margin: 0.8rem 0;
+}
+
+.richtext ul,
+.richtext ol {
+  padding-left: 1.5rem;
+}
+
+.richtext blockquote {
+  border-left: 3px solid hsl(var(--gold));
+  padding-left: 0.9rem;
+  color: hsl(var(--navy-light));
+}
+
+.richtext a {
+  color: hsl(var(--gold-dark));
+  text-decoration: underline;
+}
+
+.vuka-footer {
+  background: var(--gradient-navy);
+  color: hsl(var(--primary-foreground));
+}
+
+.vuka-footer-content {
+  padding: 4rem 0 2rem;
+}
+
+.vuka-footer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2rem;
+}
+
+.vuka-footer-col h3 {
+  color: hsl(var(--gold));
+  font-size: 1.08rem;
+  margin-bottom: 1rem;
+}
+
+.vuka-footer-col ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.vuka-footer-col li,
+.vuka-footer-col a {
+  color: hsl(var(--gold-light) / 0.82);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.vuka-footer-col a:hover {
+  color: hsl(var(--gold));
+}
+
+.vuka-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.vuka-footer-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  object-fit: contain;
+  background: hsl(var(--background) / 0.12);
+  padding: 0.2rem;
+}
+
+.vuka-footer-brand-main {
+  color: hsl(var(--primary-foreground));
+  font-family: var(--font-display), "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.vuka-footer-brand-accent {
+  color: hsl(var(--gold));
+  font-family: var(--font-display), "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.vuka-footer-text {
+  margin-top: 1rem;
+  color: hsl(var(--gold-light) / 0.82);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.vuka-socials {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.65rem;
+}
+
+.vuka-socials a {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: hsl(var(--gold) / 0.2);
+  color: hsl(var(--gold));
+}
+
+.vuka-socials a:hover {
+  background: hsl(var(--gold));
+  color: hsl(var(--navy-dark));
+}
+
+.vuka-contact-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.vuka-contact-list svg {
+  color: hsl(var(--gold));
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.vuka-footer-bottom {
+  margin-top: 2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid hsl(var(--gold) / 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.vuka-footer-bottom p {
+  margin: 0;
+  color: hsl(var(--gold-light) / 0.65);
+  font-size: 0.86rem;
+}
+
+.vuka-footer-bottom div {
+  display: inline-flex;
+  gap: 1rem;
+}
+
+.vuka-footer-bottom a {
+  color: hsl(var(--gold-light) / 0.65);
+  font-size: 0.86rem;
+}
+
+.vuka-footer-bottom a:hover {
+  color: hsl(var(--gold));
+}
+
+@media (max-width: 1100px) {
+  .vuka-nav-row {
+    flex-wrap: wrap;
+    padding: 0.8rem 0;
+    min-height: auto;
+  }
+
+  .vuka-menu {
+    order: 3;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .site-main {
+    padding-top: 150px;
+  }
+
+  .vuka-footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .vuka-topbar-row {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.4rem 0;
+  }
+
+  .vuka-contact-links {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  .site-main {
+    padding-top: 190px;
+  }
+
+  .post-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .richtext {
+    padding: 1rem;
+  }
+
+  .vuka-footer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vuka-footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

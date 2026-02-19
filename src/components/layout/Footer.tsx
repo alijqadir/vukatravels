@@ -2,11 +2,14 @@ import { Link } from "react-router-dom";
 import { Phone, Mail, MapPin, Clock, Facebook, Instagram, Twitter, Linkedin } from "lucide-react";
 import logo from "@/assets/vuka-logo.jpeg";
 
+const BLOG_URL = import.meta.env.VITE_BLOG_URL || "/blog";
+
 const quickLinks = [
   { name: "Home", href: "/" },
   { name: "About Us", href: "/about" },
   { name: "Flights", href: "/flights" },
   { name: "Holidays", href: "/holidays" },
+  { name: "Blog", href: BLOG_URL, external: true },
   { name: "FAQs", href: "/faqs" },
   { name: "Contact Us", href: "/contact" },
 ];
@@ -60,12 +63,21 @@ export function Footer() {
             <ul className="space-y-3">
               {quickLinks.map((link) => (
                 <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="text-gold-light/80 hover:text-gold transition-colors text-sm"
-                  >
-                    {link.name}
-                  </Link>
+                  {link.external ? (
+                    <a
+                      href={link.href}
+                      className="text-gold-light/80 hover:text-gold transition-colors text-sm"
+                    >
+                      {link.name}
+                    </a>
+                  ) : (
+                    <Link
+                      to={link.href}
+                      className="text-gold-light/80 hover:text-gold transition-colors text-sm"
+                    >
+                      {link.name}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

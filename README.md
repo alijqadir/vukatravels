@@ -71,3 +71,24 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Blog app (Next.js + Sanity)
+
+A blog skeleton now exists in `apps/blog` for SEO-focused content publishing.
+
+- Blog index: `http://localhost:3001/blog`
+- Blog post: `http://localhost:3001/blog/[slug]`
+- Studio: `http://localhost:3001/studio`
+
+From the repo root:
+
+```sh
+npm run blog:install
+npm run blog:dev
+```
+
+Environment variables:
+
+- Root app `.env`: set `VITE_BLOG_URL` (use `/blog` in production, `http://localhost:3001/blog` for local split-run).
+- Blog app `apps/blog/.env.local`: set Sanity values from `apps/blog/.env.example`.
+- Production routing and deployment runbook: `docs/blog-deployment-nginx.md`.

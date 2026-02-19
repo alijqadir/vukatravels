@@ -1,0 +1,32 @@
+{
+  "name": "vuka-blog-next",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "sanity:dev": "sanity dev --port 3333",
+    "sanity:deploy": "sanity deploy"
+  },
+  "dependencies": {
+    "@portabletext/react": "^3.2.0",
+    "@sanity/client": "^6.28.3",
+    "@sanity/image-url": "^1.1.0",
+    "groq": "^4.0.1",
+    "lucide-react": "^0.511.0",
+    "next": "^14.2.0",
+    "next-sanity": "^9.8.16",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sanity": "^3.54.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "typescript": "^5.8.3"
+  }
+}

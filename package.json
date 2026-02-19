@@ -11,7 +11,12 @@
     "preview": "vite preview",
     "start": "node server.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "blog:install": "npm --prefix apps/blog install",
+    "blog:dev": "npm --prefix apps/blog run dev",
+    "blog:build": "npm --prefix apps/blog run build",
+    "blog:start": "npm --prefix apps/blog run start",
+    "blog:sanity:dev": "npm --prefix apps/blog run sanity:dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
