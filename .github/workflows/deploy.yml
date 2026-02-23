@@ -1,0 +1,86 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Generate sitemap (from dist)
+        run: |
+          python .github/scripts/generate_sitemap.py
+
+      - name: Prepare deploy settings
+        run: |
+          REMOTE_PATH="${{ secrets.FTP_REMOTE_DIR }}"
+          if [ -z "$REMOTE_PATH" ]; then
+            REMOTE_PATH="./"
+          fi
+          case "$REMOTE_PATH" in
+            */) ;;
+            *) REMOTE_PATH="${REMOTE_PATH}/" ;;
+          esac
+          echo "REMOTE_PATH=$REMOTE_PATH" >> "$GITHUB_ENV"
+
+          if [ -z "${{ secrets.FTP_PORT }}" ]; then
+            echo "REMOTE_PORT=21" >> "$GITHUB_ENV"
+          else
+            echo "REMOTE_PORT=${{ secrets.FTP_PORT }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Deploy via FTP (uploads dist/ only)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          port: ${{ env.REMOTE_PORT }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: dist/
+          server-dir: ${{ env.REMOTE_PATH }}
+          dangerous-clean-slate: false
+          exclude: |
+            .ftp-deploy-sync-state.json
+
+      - name: Submit sitemap to Google Search Console (API) [domain property]
+        continue-on-error: true
+        env:
+          GSC_SITE_URL: "sc-domain:vukatravels.co.uk"
+          SITEMAP_URL: "https://vukatravels.co.uk/sitemap.xml"
+          GSC_SA_JSON: ${{ secrets.GSC_SA_JSON }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-api-python-client google-auth
+          python .github/scripts/submit_sitemap_gsc.py
+
+      - name: Submit sitemap to Google Search Console (API) [URL-prefix fallback]
+        continue-on-error: true
+        env:
+          GSC_SITE_URL: "https://vukatravels.co.uk/"
+          SITEMAP_URL: "https://vukatravels.co.uk/sitemap.xml"
+          GSC_SA_JSON: ${{ secrets.GSC_SA_JSON }}
+        run: |
+          python .github/scripts/submit_sitemap_gsc.py
