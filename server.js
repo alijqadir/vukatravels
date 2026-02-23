@@ -7,6 +7,38 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+
+  const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    const eqIndex = trimmed.indexOf("=");
+    if (eqIndex <= 0) continue;
+
+    const key = trimmed.slice(0, eqIndex).trim();
+    if (!key || process.env[key] !== undefined) continue;
+
+    let value = trimmed.slice(eqIndex + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
+
+function loadLocalEnv() {
+  loadEnvFile(path.join(__dirname, ".env"));
+  loadEnvFile(path.join(__dirname, ".env.local"));
+}
+
+loadLocalEnv();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -63,6 +95,7 @@ const requiredByType = {
   sidebar_contact: ["name", "email", "message"],
   hero_flight_search: ["name", "email", "from", "to", "departure_date"],
   sidebar_flight_search: ["name", "email", "from", "to", "departure_date"],
+  landing_fare_quote: ["name", "email", "phone", "from", "to", "selected_fare_name"],
 };
 
 function buildFields(data, req) {
@@ -81,6 +114,11 @@ function buildFields(data, req) {
   const cabinClass = pickValue(data, ["cabinClass", "cabin_class"]);
   const tripType = pickValue(data, ["tripType", "trip_type"]);
   const pageUrl = pickValue(data, ["pageUrl", "page_url"]);
+  const selectedFareName = pickValue(data, ["selectedFareName", "selected_fare_name"]);
+  const selectedFarePrice = pickValue(data, ["selectedFarePrice", "selected_fare_price"]);
+  const selectedFareCurrency = pickValue(data, ["selectedFareCurrency", "selected_fare_currency"]);
+  const selectedFareTag = pickValue(data, ["selectedFareTag", "selected_fare_tag"]);
+  const selectedFareDetails = pickValue(data, ["selectedFareDetails", "selected_fare_details"]);
 
   return {
     formType,
@@ -100,6 +138,11 @@ function buildFields(data, req) {
       passengers,
       cabin_class: cabinClass,
       trip_type: tripType,
+      selected_fare_name: selectedFareName,
+      selected_fare_price: selectedFarePrice,
+      selected_fare_currency: selectedFareCurrency,
+      selected_fare_tag: selectedFareTag,
+      selected_fare_details: selectedFareDetails,
       page_url: pageUrl,
       ip: cleanValue(req.ip || req.headers["x-forwarded-for"] || ""),
       user_agent: cleanValue(req.headers["user-agent"] || ""),
@@ -124,6 +167,9 @@ function validateFields(formType, fields) {
       case "message":
         if (!fields.message) missing.push("message");
         break;
+      case "phone":
+        if (!fields.phone) missing.push("phone");
+        break;
       case "from":
         if (!fields.from) missing.push("from");
         break;
@@ -132,6 +178,9 @@ function validateFields(formType, fields) {
         break;
       case "departure_date":
         if (!fields.departure_date) missing.push("departureDate");
+        break;
+      case "selected_fare_name":
+        if (!fields.selected_fare_name) missing.push("selectedFareName");
         break;
       default:
         break;
@@ -227,6 +276,10 @@ function createTransporter() {
   });
 }
 
+function isSmtpConfigured() {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
 async function sendNotificationEmail(fields) {
   const transporter = createTransporter();
   const to = process.env.MAIL_TO || "info@vukatravels.co.uk";
@@ -267,11 +320,22 @@ async function handleSubmission(req, res) {
   try {
     const csvPath = appendCsv(fields);
     writeXlsFromCsv(csvPath);
+    const isProduction = process.env.NODE_ENV === "production";
+    if (!isSmtpConfigured()) {
+      if (isProduction) {
+        throw new Error("SMTP configuration is missing");
+      }
+      return res.status(200).json({ ok: true, emailSkipped: true, reason: "smtp_not_configured" });
+    }
+
     await sendNotificationEmail(fields);
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error("Email notification failed:", error);
     logError("Email notification failed:", error);
+    if (process.env.NODE_ENV !== "production") {
+      return res.status(200).json({ ok: true, emailSkipped: true, reason: "smtp_send_failed" });
+    }
     return res.status(500).json({ error: error instanceof Error ? error.message : "Email failed" });
   }
 }

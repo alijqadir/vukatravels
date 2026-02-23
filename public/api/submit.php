@@ -75,6 +75,11 @@ $passengers = pick_value($data, ['passengers']);
 $cabinClass = pick_value($data, ['cabinClass', 'cabin_class']);
 $tripType = pick_value($data, ['tripType', 'trip_type']);
 $pageUrl = pick_value($data, ['pageUrl', 'page_url']);
+$selectedFareName = pick_value($data, ['selectedFareName', 'selected_fare_name']);
+$selectedFarePrice = pick_value($data, ['selectedFarePrice', 'selected_fare_price']);
+$selectedFareCurrency = pick_value($data, ['selectedFareCurrency', 'selected_fare_currency']);
+$selectedFareTag = pick_value($data, ['selectedFareTag', 'selected_fare_tag']);
+$selectedFareDetails = pick_value($data, ['selectedFareDetails', 'selected_fare_details']);
 
 $requiredByType = [
   'contact' => ['name', 'email', 'subject', 'message'],
@@ -82,6 +87,7 @@ $requiredByType = [
   'sidebar_contact' => ['name', 'email', 'message'],
   'hero_flight_search' => ['name', 'email', 'from', 'to', 'departure_date'],
   'sidebar_flight_search' => ['name', 'email', 'from', 'to', 'departure_date'],
+  'landing_fare_quote' => ['name', 'email', 'phone', 'from', 'to', 'selected_fare_name'],
 ];
 
 $required = $requiredByType[$formType] ?? ['email'];
@@ -100,6 +106,9 @@ foreach ($required as $field) {
     case 'message':
       if ($message === '') $missing[] = 'message';
       break;
+    case 'phone':
+      if ($phone === '') $missing[] = 'phone';
+      break;
     case 'from':
       if ($from === '') $missing[] = 'from';
       break;
@@ -108,6 +117,9 @@ foreach ($required as $field) {
       break;
     case 'departure_date':
       if ($departureDate === '') $missing[] = 'departureDate';
+      break;
+    case 'selected_fare_name':
+      if ($selectedFareName === '') $missing[] = 'selectedFareName';
       break;
   }
 }
@@ -136,6 +148,11 @@ $fields = [
   'passengers' => $passengers,
   'cabin_class' => $cabinClass,
   'trip_type' => $tripType,
+  'selected_fare_name' => $selectedFareName,
+  'selected_fare_price' => $selectedFarePrice,
+  'selected_fare_currency' => $selectedFareCurrency,
+  'selected_fare_tag' => $selectedFareTag,
+  'selected_fare_details' => $selectedFareDetails,
   'page_url' => $pageUrl,
   'ip' => $ip,
   'user_agent' => $userAgent,

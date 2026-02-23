@@ -1,0 +1,32 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>VUKA Landing Pages Keywords</title>
+</head>
+<body>
+  <table border="1">
+    <tr>
+      <th>Location</th>
+      <th>Keyword</th>
+      <th>Landing URL</th>
+      <th>Template Type</th>
+      <th>Status</th>
+    </tr>
+    <tr><td>Lagos</td><td>cheap flights from london to lagos</td><td>https://vukatravels.co.uk/cheap-flights-from-london-to-lagos/</td><td>Primary</td><td>Created</td></tr>
+    <tr><td>Lagos</td><td>flights to lagos from uk</td><td>https://vukatravels.co.uk/flights-to-lagos-from-uk/</td><td>Primary</td><td>Created</td></tr>
+    <tr><td>Lagos</td><td>flights from london to lagos</td><td>https://vukatravels.co.uk/flights-from-london-to-lagos/</td><td>Redirect Alias</td><td>Created</td></tr>
+
+    <tr><td>Accra</td><td>cheap flights from london to accra</td><td>https://vukatravels.co.uk/cheap-flights-from-london-to-accra/</td><td>Primary</td><td>Created</td></tr>
+    <tr><td>Accra</td><td>flights to accra from uk</td><td>https://vukatravels.co.uk/flights-to-accra-from-uk/</td><td>Primary</td><td>Created</td></tr>
+    <tr><td>Accra</td><td>flights from london to accra</td><td>https://vukatravels.co.uk/flights-from-london-to-accra/</td><td>Redirect Alias</td><td>Created</td></tr>
+
+    <tr><td>Harare</td><td>cheap flights from london to harare</td><td>https://vukatravels.co.uk/cheap-flights-from-london-to-harare/</td><td>Primary</td><td>Created</td></tr>
+    <tr><td>Harare</td><td>flights to harare from uk</td><td>https://vukatravels.co.uk/flights-to-harare-from-uk/</td><td>Primary</td><td>Created</td></tr>
+    <tr><td>Harare</td><td>flights from london to harare</td><td>https://vukatravels.co.uk/flights-from-london-to-harare/</td><td>Redirect Alias</td><td>Created</td></tr>
+
+    <tr><td>Entebbe</td><td>cheap flights from london to entebbe</td><td>https://vukatravels.co.uk/cheap-flights-from-london-to-entebbe/</td><td>Primary</td><td>Created</td></tr>
+    <tr><td>Entebbe</td><td>flights to entebbe from uk</td><td>https://vukatravels.co.uk/flights-to-entebbe-from-uk/</td><td>Primary</td><td>Created</td></tr>
+    <tr><td>Entebbe</td><td>flights from london to entebbe</td><td>https://vukatravels.co.uk/flights-from-london-to-entebbe/</td><td>Redirect Alias</td><td>Created</td></tr>
+  </table>
+</body>
+</html>

@@ -14,3 +14,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://vukatravels.co.uk/blog-sitemap.xml
+Sitemap: https://vukatravels.co.uk/sitemap.xml

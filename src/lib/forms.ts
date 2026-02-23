@@ -1,6 +1,18 @@
 export type FormPayload = Record<string, unknown>;
 
-const DEFAULT_ENDPOINT = import.meta.env.VITE_FORM_ENDPOINT || "/api/submit.php";
+function isLocalHostname(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
+function resolveFormEndpoint() {
+  if (typeof window !== "undefined" && isLocalHostname(window.location.hostname)) {
+    return "/api/submit.php";
+  }
+
+  return import.meta.env.VITE_FORM_ENDPOINT || "/api/submit.php";
+}
+
+const DEFAULT_ENDPOINT = resolveFormEndpoint();
 
 declare global {
   interface Window {
