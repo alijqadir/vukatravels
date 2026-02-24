@@ -2,9 +2,9 @@ name: Sync landing pages from Sheet (VUKA)
 
 on:
   workflow_dispatch:
-  schedule:
-    # every 30 minutes
-    - cron: "*/30 * * * *"
+
+# NOTE: Disabled schedule because VUKA content should be generated via LOCAL LLM (Ollama),
+# not inside GitHub Actions. Run the local sync script then push to main for Hostinger Git Deployment.
 
 concurrency:
   group: sync-from-sheet-${{ github.ref }}
