@@ -147,16 +147,18 @@ def build_seo_block(keyword: str, location: str = "") -> tuple[str, str, str]:
         faq_html.append("</details>")
     faq_html.append("</div>")
 
-    # Maintainable SEO box: FAQs on top + scrollable content section
+    # Maintainable layout: separate FAQ box + separate scrollable content box
     block = "\n".join([
         AUTO_START,
-        "<section class=\"seo-box\" aria-label=\"SEO content\">",
-        "  <div class=\"seo-box__header\">",
-        "    <p class=\"seo-box__title\">Route guide & FAQs</p>",
-        "    <p class=\"seo-box__hint\">Expandable FAQs + scrollable guide</p>",
-        "  </div>",
+        "<section class=\"seo-faq-box\" aria-label=\"FAQs\">",
         "  " + "\n  ".join(faq_html),
-        "  <div class=\"seo-box__scroll\">",
+        "</section>",
+        "<section class=\"seo-content-box\" aria-label=\"SEO content\">",
+        "  <div class=\"seo-content-box__header\">",
+        "    <p class=\"seo-content-box__title\">Route guide</p>",
+        "    <p class=\"seo-content-box__hint\">Scrollable long-form content</p>",
+        "  </div>",
+        "  <div class=\"seo-content-box__scroll\">",
         footer_html,
         "\n".join(sections),
         "  </div>",
