@@ -7,6 +7,16 @@ const DIST_DIR = path.join(ROOT, "dist");
 
 const IGNORE = new Set(["api", "storage", "airline-logos"]);
 
+// Root-level static assets needed by landing pages (they reference absolute /landing-pages.css etc.)
+const ROOT_FILES = [
+  "landing-pages.css",
+  "landing-pages.js",
+  "sitemap.xml",
+  "robots.txt",
+  "favicon.jpeg",
+  "favicon.ico",
+];
+
 async function exists(p) {
   try {
     await stat(p);
@@ -20,6 +30,14 @@ async function main() {
   if (!(await exists(DIST_DIR))) {
     console.error("dist/ not found. Run build first.");
     process.exit(2);
+  }
+
+  // Copy required root-level files
+  for (const f of ROOT_FILES) {
+    const src = path.join(PUBLIC_DIR, f);
+    if (await exists(src)) {
+      await cp(src, path.join(DIST_DIR, f));
+    }
   }
 
   const entries = await readdir(PUBLIC_DIR, { withFileTypes: true });
