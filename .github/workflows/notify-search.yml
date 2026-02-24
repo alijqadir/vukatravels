@@ -1,0 +1,48 @@
+name: Ping + Submit Sitemap (VUKA)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: notify-search-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping sitemap (Google + Bing)
+        run: |
+          curl -sS "https://www.google.com/ping?sitemap=https://vukatravels.co.uk/sitemap.xml" || true
+          curl -sS "https://www.bing.com/ping?sitemap=https://vukatravels.co.uk/sitemap.xml" || true
+
+      - name: Checkout (for script)
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Submit sitemap to Google Search Console (API) [domain property]
+        continue-on-error: true
+        env:
+          GSC_SITE_URL: "sc-domain:vukatravels.co.uk"
+          SITEMAP_URL: "https://vukatravels.co.uk/sitemap.xml"
+          GSC_SA_JSON: ${{ secrets.GSC_SA_JSON }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-api-python-client google-auth
+          python .github/scripts/submit_sitemap_gsc.py
+
+      - name: Submit sitemap to Google Search Console (API) [URL-prefix fallback]
+        continue-on-error: true
+        env:
+          GSC_SITE_URL: "https://vukatravels.co.uk/"
+          SITEMAP_URL: "https://vukatravels.co.uk/sitemap.xml"
+          GSC_SA_JSON: ${{ secrets.GSC_SA_JSON }}
+        run: |
+          python .github/scripts/submit_sitemap_gsc.py
