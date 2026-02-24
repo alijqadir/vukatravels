@@ -892,10 +892,10 @@ a {
   color: #1c7d54;
 }
 
-./* --- SEO long content box (auto-generated) --- */
+/* --- SEO long content box (auto-generated) --- */
 .seo-box {
-  margin-top: 1.75rem;
-  padding: 1.25rem 1.25rem;
+  margin-top: 2rem;
+  padding: 1.35rem 1.35rem;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -928,6 +928,8 @@ a {
   max-height: 560px;
   overflow: auto;
   padding-right: 0.35rem;
+  padding-top: 1.1rem;
+  border-top: 1px dashed #c5d5ef;
 }
 
 .seo-box__scroll h2,
@@ -948,15 +950,15 @@ a {
 }
 
 .seo-faq {
-  margin-bottom: 1rem;
+  margin-bottom: 1.6rem;
 }
 
 .seo-faq__item {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: #fff;
-  padding: 0.65rem 0.85rem;
-  margin: 0.65rem 0;
+  padding: 0.8rem 1rem;
+  margin: 0.9rem 0;
 }
 
 .seo-faq__item summary {
