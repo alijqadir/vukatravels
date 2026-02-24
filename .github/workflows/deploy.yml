@@ -26,6 +26,10 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Fill landing pages SEO blocks (public/*)
+        run: |
+          python .github/scripts/fill_landing_pages.py
+
       - name: Build
         run: npm run build
 
@@ -64,6 +68,12 @@ jobs:
           dangerous-clean-slate: false
           exclude: |
             .ftp-deploy-sync-state.json
+
+      - name: Ping sitemap (Google + Bing)
+        if: ${{ always() }}
+        run: |
+          curl -sS "https://www.google.com/ping?sitemap=https://vukatravels.co.uk/sitemap.xml" || true
+          curl -sS "https://www.bing.com/ping?sitemap=https://vukatravels.co.uk/sitemap.xml" || true
 
       - name: Submit sitemap to Google Search Console (API) [domain property]
         continue-on-error: true
