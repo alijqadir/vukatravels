@@ -20,6 +20,9 @@ jobs:
         with:
           persist-credentials: true
 
+      - name: Ensure workflow can push commits
+        run: |
+          echo "Note: Repo Settings → Actions → General → Workflow permissions must be set to 'Read and write'"
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -40,6 +43,8 @@ jobs:
           python .github/scripts/sync_from_sheet_vuka.py
 
       - name: Commit & push if changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if git diff --quiet; then
             echo "No changes to commit"
