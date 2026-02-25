@@ -683,11 +683,13 @@
       whatsappLink.target = '_blank';
       whatsappLink.rel = 'noopener noreferrer';
       whatsappLink.textContent = 'WhatsApp';
+      whatsappLink.setAttribute('aria-label', 'WhatsApp this fare');
 
       var callLink = document.createElement('a');
       callLink.className = 'fare-quick fare-quick--call';
       callLink.href = 'tel:' + supportPhoneHref;
       callLink.textContent = 'Call';
+      callLink.setAttribute('aria-label', 'Call to book this fare');
 
       utilityWrap.appendChild(whatsappLink);
       utilityWrap.appendChild(callLink);
@@ -782,7 +784,7 @@
     var el = document.createElement('div');
     el.id = 'ticket-toast';
     el.className = 'ticket-toast';
-    el.innerHTML = '<div class="ticket-toast__inner"><strong>Request received</strong><p>' + (text || 'We’re processing your request. A VUKA consultant will contact you shortly.') + '</p></div>';
+    el.innerHTML = '<div class="ticket-toast__inner"><strong>Request received</strong><p>' + (text || 'We’re processing your request now. Please expect a call or WhatsApp confirmation shortly.') + '</p></div>';
     document.body.appendChild(el);
 
     setTimeout(function () {
@@ -844,7 +846,7 @@
     // If lead already captured via inline search, don't ask again. Log click + show confirmation.
     if (window.__inlineLead && window.__inlineLead.email) {
       trackTicketClick(fare);
-      showTicketProcessedToast('We’ve noted your selected option. We’ll confirm live availability and contact you shortly.');
+      showTicketProcessedToast('We’ve noted your selected option. We’re processing it now — expect a call or WhatsApp confirmation shortly.');
       return;
     }
 

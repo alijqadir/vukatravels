@@ -647,6 +647,17 @@ a {
   line-height: 1;
 }
 
+/* More sober CTA button labelling (no emoji icons) */
+.fare-quick--wa::before,
+.fare-quick--call::before {
+  content: "";
+  display: none;
+}
+
+.fare-quick {
+  letter-spacing: 0.02em;
+}
+
 .fare-quick:hover {
   transform: translateY(-1px);
   border-color: #aebfdd;
