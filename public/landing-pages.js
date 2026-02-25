@@ -191,6 +191,15 @@
     return raw.replace(/\bT\+\d{1,4}\b/, resolved);
   }
 
+  function resolveRelativeTokensInElement(el) {
+    if (!el) return;
+    var txt = cleanText(el.textContent);
+    if (!txt || txt.indexOf('T+') === -1) return;
+    el.textContent = txt.replace(/\bT\+\d{1,4}\b/g, function (match) {
+      return resolveRelativeDateToken(match);
+    });
+  }
+
   function parseLineParts(lineText) {
     var line = cleanText(lineText);
     if (!line) {
@@ -319,6 +328,11 @@
     details.insertBefore(airlineWrap, titleEl);
 
     var linesWrap = details.querySelector('.fare-lines');
+    // Make relative tokens visible on the page too (not just inside parsed meta)
+    Array.prototype.slice.call(item.querySelectorAll('.fare-line')).forEach(function (lineEl) {
+      resolveRelativeTokensInElement(lineEl);
+    });
+
     var metaWrap = document.createElement('div');
     metaWrap.className = 'ticket-meta';
     metaWrap.appendChild(createMetaItem('ticket-meta__item--route', parsed.route || 'Route details'));
