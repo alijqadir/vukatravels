@@ -635,13 +635,25 @@
     }
 
     var selectBtn = item.querySelector('.select-fare-btn');
-    if (selectBtn && !item.querySelector('.fare-actions')) {
-      var actionsWrap = document.createElement('div');
-      actionsWrap.className = 'fare-actions';
+    if (selectBtn) {
+      // Ensure actions wrapper exists (some pages may already have a .fare-actions block)
+      var actionsWrap = item.querySelector('.fare-actions');
+      if (!actionsWrap) {
+        actionsWrap = document.createElement('div');
+        actionsWrap.className = 'fare-actions';
+        item.insertBefore(actionsWrap, selectBtn);
+      }
 
-      var utilityWrap = document.createElement('div');
-      utilityWrap.className = 'fare-actions__utility';
+      // Ensure utility exists (WhatsApp + Call)
+      var utilityWrap = actionsWrap.querySelector('.fare-actions__utility');
+      if (!utilityWrap) {
+        utilityWrap = document.createElement('div');
+        utilityWrap.className = 'fare-actions__utility';
+        actionsWrap.appendChild(utilityWrap);
+      }
 
+      // (Re)build the utility links so they never disappear
+      utilityWrap.innerHTML = '';
       var fareData = collectFareFromRow(selectBtn);
 
       var whatsappLink = document.createElement('a');
@@ -661,9 +673,11 @@
 
       selectBtn.textContent = 'Book Now';
       selectBtn.classList.add('fare-select-btn');
-      item.insertBefore(actionsWrap, selectBtn);
-      actionsWrap.appendChild(utilityWrap);
-      actionsWrap.appendChild(selectBtn);
+
+      // Ensure the CTA button is inside the actions wrapper.
+      if (selectBtn.parentNode !== actionsWrap) {
+        actionsWrap.appendChild(selectBtn);
+      }
     }
 
     item.setAttribute('data-ticket-enhanced', '1');
@@ -740,12 +754,16 @@
     decorateFareItem(item);
   });
 
-  Array.prototype.slice.call(document.querySelectorAll('.select-fare-btn')).forEach(function (button) {
-    button.textContent = 'Book Now';
-    button.addEventListener('click', function (event) {
-      event.preventDefault();
-      openModal(collectFareFromRow(button));
-    });
+  // Event delegation: ensures Book Now always opens the modal even if DOM is rearranged.
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!target) return;
+
+    var btn = target.closest ? target.closest('.select-fare-btn') : null;
+    if (!btn) return;
+
+    event.preventDefault();
+    openModal(collectFareFromRow(btn));
   });
 
   Array.prototype.slice.call(document.querySelectorAll('.open-quote-form')).forEach(function (button) {
