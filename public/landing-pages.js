@@ -329,10 +329,31 @@
             return data;
           });
         })
-        .then(function () {
+        .then(function (resp) {
+          // Store lead context for later ticket click tracking + post-lead UX
+          window.__inlineLead = {
+            leadId: resp && resp.lead_id ? String(resp.lead_id) : '',
+            name: payload.name,
+            email: payload.email,
+            phone: payload.phone,
+            from: payload.from,
+            to: payload.to,
+            destination: payload.destination,
+            departureDate: payload.departureDate,
+            returnDate: payload.returnDate,
+            passengers: payload.passengers,
+            cabinClass: payload.cabinClass,
+            tripType: payload.tripType,
+          };
+
           var depObj = parseISODate(depRaw);
           var retObj = parseISODate(retRaw);
           updateFareLinesWithDates(depObj, retObj);
+
+          // Rebuild ticket utilities (WhatsApp/Call) so they include updated dates in the message
+          Array.prototype.slice.call(document.querySelectorAll('.fare-item')).forEach(function (it) {
+            decorateFareItem(it);
+          });
 
           updateSearchSummaryBox('Passengers', (payload.passengers || '1') + ' Traveller');
           updateSearchSummaryBox('Cabin', payload.cabinClass || 'Economy');
@@ -754,7 +775,62 @@
     decorateFareItem(item);
   });
 
-  // Event delegation: ensures Book Now always opens the modal even if DOM is rearranged.
+  function showTicketProcessedToast(text) {
+    var existing = document.getElementById('ticket-toast');
+    if (existing) existing.remove();
+
+    var el = document.createElement('div');
+    el.id = 'ticket-toast';
+    el.className = 'ticket-toast';
+    el.innerHTML = '<div class="ticket-toast__inner"><strong>Request received</strong><p>' + (text || 'We’re processing your request. A VUKA consultant will contact you shortly.') + '</p></div>';
+    document.body.appendChild(el);
+
+    setTimeout(function () {
+      el.classList.add('is-visible');
+    }, 10);
+
+    setTimeout(function () {
+      el.classList.remove('is-visible');
+      setTimeout(function () { el.remove(); }, 250);
+    }, 3800);
+  }
+
+  function trackTicketClick(fare) {
+    var lead = window.__inlineLead || {};
+    if (!lead.email || !lead.phone) return;
+
+    var payload = {
+      formType: 'landing_ticket_click',
+      name: lead.name || '',
+      email: lead.email || '',
+      phone: lead.phone || '',
+      from: lead.from || quoteFrom,
+      to: lead.to || quoteTo,
+      destination: lead.destination || quoteDestination,
+      departureDate: lead.departureDate || '',
+      returnDate: lead.returnDate || '',
+      passengers: lead.passengers || '',
+      cabinClass: lead.cabinClass || '',
+      tripType: lead.tripType || 'Return',
+      message: 'User clicked Book Now after inline search. lead_id=' + (lead.leadId || '') ,
+      pageUrl: window.location.href,
+      selectedFareName: fare.name || '',
+      selectedFarePrice: fare.price || '',
+      selectedFareTag: fare.tag || '',
+      selectedFareDetails: fare.details || '',
+      selectedFareCurrency: 'GBP',
+      website: '',
+      parentLeadId: lead.leadId || '',
+    };
+
+    fetch('/api/submit.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(function () { /* ignore */ });
+  }
+
+  // Event delegation: Book Now behaviour depends on whether we already captured the inline-search lead.
   document.addEventListener('click', function (event) {
     var target = event.target;
     if (!target) return;
@@ -763,7 +839,17 @@
     if (!btn) return;
 
     event.preventDefault();
-    openModal(collectFareFromRow(btn));
+    var fare = collectFareFromRow(btn);
+
+    // If lead already captured via inline search, don't ask again. Log click + show confirmation.
+    if (window.__inlineLead && window.__inlineLead.email) {
+      trackTicketClick(fare);
+      showTicketProcessedToast('We’ve noted your selected option. We’ll confirm live availability and contact you shortly.');
+      return;
+    }
+
+    // Otherwise open the modal (lead capture).
+    openModal(fare);
   });
 
   Array.prototype.slice.call(document.querySelectorAll('.open-quote-form')).forEach(function (button) {

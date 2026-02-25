@@ -90,6 +90,8 @@ $requiredByType = [
   'landing_fare_quote' => ['name', 'email', 'phone', 'from', 'to', 'selected_fare_name'],
   // Inline SEO landing-page search (lead-gated)
   'landing_inline_search' => ['name', 'email', 'phone', 'from', 'to', 'departure_date'],
+  // Track which ticket user clicked after search/lead capture
+  'landing_ticket_click' => ['email', 'phone', 'from', 'to', 'selected_fare_name'],
 ];
 
 $required = $requiredByType[$formType] ?? ['email'];
@@ -134,8 +136,16 @@ $submittedAt = gmdate('Y-m-d H:i:s');
 $ip = clean_value($_SERVER['REMOTE_ADDR'] ?? '');
 $userAgent = clean_value($_SERVER['HTTP_USER_AGENT'] ?? '');
 
+$leadId = '';
+try {
+  $leadId = bin2hex(random_bytes(6));
+} catch (Throwable $e) {
+  $leadId = uniqid('lead_', true);
+}
+
 $fields = [
   'submitted_at' => $submittedAt,
+  'lead_id' => $leadId,
   'form_type' => $formType,
   'name' => $name,
   'email' => $email,
@@ -377,7 +387,7 @@ if ($smtpConfig && isset($smtpConfig['from'])) {
 }
 
 // Respond immediately after local logging to avoid delays.
-respond_and_continue(['ok' => true]);
+respond_and_continue(['ok' => true, 'lead_id' => $leadId]);
 
 ignore_user_abort(true);
 set_time_limit(30);
