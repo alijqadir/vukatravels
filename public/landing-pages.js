@@ -194,24 +194,36 @@
     replaceBoxValue('Cabin', '<span class="search-box__control"><select name="cabin_class" aria-label="Cabin"><option value="Economy" selected>Economy</option><option value="Premium Economy">Premium Economy</option><option value="Business">Business</option></select></span>');
     replaceBoxValue('Passengers', '<span class="search-box__control"><input type="number" name="passengers" aria-label="Passengers" min="1" value="1" /></span>');
 
-    // Add always-visible lead-gated fields + dates (inside the same card)
-    var fields = document.createElement('div');
-    fields.className = 'inline-search-fields';
+    // Add always-visible lead-gated fields + dates as additional "search-box" rows (so it feels like ONE form)
+    var fieldsGrid = document.createElement('div');
+    fieldsGrid.className = 'search-summary__grid search-summary__grid--fields';
 
-    fields.innerHTML = [
-      '  <div class="inline-search-fields__grid">',
-      '    <label>Full name<input type="text" name="name" required autocomplete="name" placeholder="Your full name" /></label>',
-      '    <label>Email<input type="email" name="email" required autocomplete="email" placeholder="you@email.com" /></label>',
-      '    <label>Phone<input type="tel" name="phone" required autocomplete="tel" placeholder="+44" /></label>',
-      '    <label>Departure date<input type="date" name="departure_date" required /></label>',
-      '    <label>Return date<input type="date" name="return_date" /></label>',
-      '    <label class="inline-search-fields__message">Extra details<textarea name="message" placeholder="Optional: baggage, flexibility, preferred airline"></textarea></label>',
+    function box(label, innerHtml) {
+      return [
+        '<div class="search-box">',
+        '  <span>' + label + '</span>',
+        '  <div class="search-box__control">' + innerHtml + '</div>',
+        '</div>'
+      ].join('');
+    }
+
+    fieldsGrid.innerHTML = [
+      box('Full name', '<input type="text" name="name" required autocomplete="name" placeholder="Your full name" />'),
+      box('Email', '<input type="email" name="email" required autocomplete="email" placeholder="you@email.com" />'),
+      box('Phone', '<input type="tel" name="phone" required autocomplete="tel" placeholder="+44" />'),
+      box('Departure date', '<input type="date" name="departure_date" required />'),
+      box('Return date', '<input type="date" name="return_date" />'),
+      '<div class="search-box search-box--wide">',
+      '  <span>Extra details</span>',
+      '  <div class="search-box__control">',
+      '    <textarea name="message" placeholder="Optional: baggage, flexibility, preferred airline"></textarea>',
       '  </div>',
-      '  <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" />',
-      '  <div class="fare-form__status" id="inline-search-status"></div>'
+      '</div>',
+      '<input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" />',
+      '<div class="fare-form__status" id="inline-search-status"></div>'
     ].join('');
 
-    form.appendChild(fields);
+    form.appendChild(fieldsGrid);
 
     // Move actionRow into the form and convert primary CTA into a submit button.
     form.appendChild(actionRow);
