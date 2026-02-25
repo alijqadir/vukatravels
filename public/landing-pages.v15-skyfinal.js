@@ -107,14 +107,14 @@
     var parts = txt.split('|').map(cleanText).filter(Boolean);
     if (parts.length < 2) return txt;
 
-    // Preserve time only if it exists in the DATE segment itself (prevents duplicates like "09:15 09:15")
-    var dateSeg = parts[1] || '';
-    var timeMatch = dateSeg.match(/\b(\d{1,2}:\d{2})\b/);
+    // Preserve time if present anywhere
+    var timeMatch = txt.match(/\b(\d{1,2}:\d{2})\b/);
     var dateWithTime = dateStr;
-    if (timeMatch && dateWithTime.indexOf(timeMatch[1]) === -1) {
+    if (timeMatch) {
       dateWithTime = dateWithTime + ' ' + timeMatch[1];
     }
 
+    // Replace the first date-like segment (usually parts[1])
     parts[1] = dateWithTime;
 
     return parts.join(' | ');
@@ -529,12 +529,6 @@
     var route = segments[0] || '';
     var date = segments[1] || '';
     var stops = segments[2] || '';
-
-    // Our fare lines often look like: ROUTE | DATE(+TIME) | CABIN
-    // In that case, segments[2] is cabin (e.g., Economy) not stops.
-    if (/\b(economy|premium\s*economy|business|first)\b/i.test(stops)) {
-      stops = '';
-    }
 
     if (segments.length > 3 && !stops) {
       stops = segments[3];
