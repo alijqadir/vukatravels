@@ -157,6 +157,40 @@
     };
   }
 
+  function formatShortDate(dateObj) {
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var dd = String(dateObj.getDate()).padStart(2, '0');
+    var mm = months[dateObj.getMonth()];
+    var yy = dateObj.getFullYear();
+    return dd + ' ' + mm + ' ' + yy;
+  }
+
+  function resolveRelativeDateToken(text) {
+    // Supports tokens like: "T+21" or "T+21 09:15" anywhere in the segment.
+    var raw = cleanText(text);
+    if (!raw) return raw;
+
+    var m = raw.match(/\bT\+(\d{1,4})\b/);
+    if (!m) return raw;
+
+    var offsetDays = parseInt(m[1], 10);
+    if (!isFinite(offsetDays)) return raw;
+
+    var now = new Date();
+    // Use local noon to avoid DST edge weirdness
+    var base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+    base.setDate(base.getDate() + offsetDays);
+
+    var resolved = formatShortDate(base);
+    // keep any time part if present
+    var timeMatch = raw.match(/\b(\d{1,2}:\d{2})\b/);
+    if (timeMatch) {
+      resolved = resolved + ' ' + timeMatch[1];
+    }
+
+    return raw.replace(/\bT\+\d{1,4}\b/, resolved);
+  }
+
   function parseLineParts(lineText) {
     var line = cleanText(lineText);
     if (!line) {
@@ -181,6 +215,8 @@
     if (segments.length > 3 && !stops) {
       stops = segments[3];
     }
+
+    date = resolveRelativeDateToken(date);
 
     if (!stops) {
       if (/\bvia\b/i.test(routePart)) {
