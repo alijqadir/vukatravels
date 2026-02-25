@@ -327,17 +327,19 @@ a {
 .fare-item {
   position: relative;
   overflow: hidden;
-  border: 1px solid #d2def1;
-  border-radius: var(--radius-md);
-  background: linear-gradient(125deg, #ffffff 0%, #fbfdff 60%, #f4f8ff 100%);
+  border: 1px solid #d6e3f6;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(214px, 236px);
-  grid-template-rows: auto auto;
-  column-gap: 1.22rem;
-  row-gap: 0.72rem;
-  padding: 1.16rem 1.2rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "details"
+    "price"
+    "actions";
+  row-gap: 0.9rem;
+  padding: 1.08rem 1.08rem;
   align-items: start;
-  box-shadow: 0 16px 30px -28px rgba(8, 21, 43, 0.55);
+  box-shadow: 0 18px 38px -30px rgba(8, 21, 43, 0.48);
 }
 
 .fare-item::before,
@@ -362,23 +364,22 @@ a {
 }
 
 .fare-details {
+  grid-area: details;
   min-width: 0;
-  grid-row: 1 / span 2;
-  grid-column: 1;
-  padding-right: 0.08rem;
+  padding-right: 0.12rem;
 }
 
 .ticket-airline {
   display: flex;
   align-items: center;
-  gap: 0.72rem;
-  margin-bottom: 0.62rem;
+  gap: 0.85rem;
+  margin-bottom: 0.48rem;
 }
 
 .ticket-logo {
-  width: 158px;
+  width: 150px;
   height: 50px;
-  border-radius: 8px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -408,7 +409,7 @@ a {
   align-items: center;
   justify-content: center;
   font-family: "Montserrat", sans-serif;
-  font-size: 0.84rem;
+  font-size: 0.9rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   color: #fff;
@@ -428,15 +429,15 @@ a {
   display: block;
   color: #25426f;
   font-weight: 700;
-  font-size: 0.82rem;
-  letter-spacing: 0.01em;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
 }
 
 .ticket-airline__route {
   display: block;
   color: #6980a3;
-  font-size: 0.76rem;
-  margin-top: 0.1rem;
+  font-size: 0.8rem;
+  margin-top: 0.08rem;
 }
 
 .fare-title {
@@ -444,22 +445,23 @@ a {
   font-weight: 700;
   color: var(--navy-900);
   font-family: "Montserrat", sans-serif;
-  font-size: 1.03rem;
+  font-size: 1.08rem;
+  letter-spacing: 0.01em;
 }
 
 .fare-lines {
-  margin-top: 0.56rem;
+  margin-top: 0.62rem;
   display: grid;
   gap: 0.34rem;
 }
 
 .fare-line {
   color: #314b74;
-  font-size: 0.83rem;
-  line-height: 1.5;
+  font-size: 0.9rem;
+  line-height: 1.55;
   display: flex;
   align-items: flex-start;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 
 .fare-line::before {
@@ -469,8 +471,8 @@ a {
   align-items: center;
   justify-content: center;
   margin-top: 0.14rem;
-  width: 1.32rem;
-  height: 1.32rem;
+  width: 1.38rem;
+  height: 1.38rem;
   border-radius: 50%;
   font-size: 0.78rem;
   color: #fff;
@@ -488,33 +490,39 @@ a {
 }
 
 .ticket-meta {
-  margin-top: 0.72rem;
+  margin-top: 0.68rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.42rem;
+  gap: 0.45rem;
+  row-gap: 0.35rem;
+  min-width: 0;
 }
 
 .ticket-meta__item {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  border: 1px solid #dce6f6;
-  border-radius: 999px;
-  background: #f9fbff;
-  color: #3b5782;
-  padding: 0.18rem 0.54rem;
-  font-size: 0.79rem;
+  gap: 0.38rem;
+  border: 1px solid #cfdcf3;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f4f7ff 0%, #eaf1ff 100%);
+  color: #1f3e69;
+  padding: 0.3rem 0.68rem;
+  font-size: 0.86rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  box-shadow: 0 6px 14px -12px rgba(8, 21, 43, 0.45);
+  white-space: nowrap;
 }
 
 .ticket-meta__item::before {
   content: "";
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.1rem;
+  height: 1.1rem;
   display: inline-block;
-  flex: 0 0 1.05rem;
+  flex: 0 0 1.1rem;
   background: currentColor;
-  opacity: 0.92;
+  opacity: 0.85;
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
@@ -544,19 +552,26 @@ a {
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 7V6a4 4 0 0 1 8 0v1h1a2 2 0 0 1 2 2v10a3 3 0 0 1-3 3h-1v-2h1a1 1 0 0 0 1-1V9H7v10a1 1 0 0 0 1 1h1v2H8a3 3 0 0 1-3-3V9a2 2 0 0 1 2-2h1zm2 0h4V6a2 2 0 0 0-4 0v1z'/%3E%3C/svg%3E");
 }
 
+.ticket-meta__item--cabin::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M7 3a2 2 0 0 0-2 2v8h2V5h6v8h2V5a2 2 0 0 0-2-2H7zm11 12H4a2 2 0 0 0-2 2v4h2v-4h14v4h2v-4a2 2 0 0 0-2-2z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M7 3a2 2 0 0 0-2 2v8h2V5h6v8h2V5a2 2 0 0 0-2-2H7zm11 12H4a2 2 0 0 0-2 2v4h2v-4h14v4h2v-4a2 2 0 0 0-2-2z'/%3E%3C/svg%3E");
+}
+
 .fare-price {
-  grid-column: 2;
-  grid-row: 1;
-  text-align: right;
+  grid-area: price;
   min-width: 0;
-  border-left: 1px dashed #c5d5ef;
-  padding-left: 1.08rem;
-  padding-top: 0.08rem;
-  padding-bottom: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 0;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.16rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid #d4e1f5;
+  background: linear-gradient(145deg, #eef3ff 0%, #f9fbff 100%);
+  box-shadow: 0 12px 26px -22px rgba(8, 21, 43, 0.7);
+  text-align: left;
   justify-self: stretch;
   align-self: start;
   z-index: 2;
@@ -565,9 +580,10 @@ a {
 .fare-price::before {
   content: "from";
   display: block;
-  line-height: 1;
-  margin-bottom: -0.08rem;
-  font-size: 0.58rem;
+  line-height: 1.1;
+  margin-right: 0;
+  margin-bottom: 0.06rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -590,27 +606,28 @@ a {
   display: block;
   font-family: "Montserrat", sans-serif;
   margin-top: 0;
-  font-size: 1.42rem;
+  font-size: 1.52rem;
   color: var(--navy-900);
   line-height: 1.08;
 }
 
 .fare-price span {
   display: block;
-  margin-top: 0.14rem;
-  font-size: 0.75rem;
+  margin-top: 0.06rem;
+  font-size: 0.78rem;
   color: #7082a0;
   line-height: 1.4;
 }
 
 .fare-actions {
-  grid-column: 2;
-  grid-row: 2;
+  grid-area: actions;
   align-self: stretch;
-  justify-self: end;
-  width: min(100%, 208px);
+  justify-self: stretch;
+  width: 100%;
   display: grid;
-  gap: 0.5rem;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 0.55rem;
 }
 
 .fare-actions .select-fare-btn {
@@ -619,16 +636,16 @@ a {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 50px;
-  padding: 0.62rem 0.95rem;
-  font-size: 0.91rem;
+  min-height: 54px;
+  padding: 0.72rem 1.05rem;
+  font-size: 0.95rem;
   font-family: "Montserrat", sans-serif;
   font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.015em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   color: #ffffff;
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid #0c2648;
   background: linear-gradient(145deg, #1f4f8d, #123a6a 58%, #0d2d54);
   box-shadow: 0 16px 28px -22px rgba(8, 21, 43, 0.95);
@@ -654,14 +671,14 @@ a {
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  min-height: 40px;
-  padding: 0.38rem 0.56rem;
+  min-height: 44px;
+  padding: 0.44rem 0.62rem;
   border-radius: 12px;
   border: 1px solid #c9d7ef;
   background: linear-gradient(180deg, #ffffff, #f6faff);
   color: #1f3e69;
   text-decoration: none;
-  font-size: 0.77rem;
+  font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1;
@@ -1237,58 +1254,56 @@ footer {
   gap: 0.75rem;
 }
 
-@media (max-width: 900px) {
-  .search-summary__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+@media (min-width: 900px) {
   .fare-item {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto;
-    gap: 0.72rem;
+    grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
+    grid-template-areas:
+      "details price"
+      "details actions";
+    column-gap: 1.05rem;
+    row-gap: 0.85rem;
+    padding: 1.15rem 1.25rem;
+    align-items: start;
   }
 
   .fare-details {
-    grid-column: auto;
-    grid-row: auto;
-    padding-right: 0;
+    padding-right: 1.05rem;
   }
 
   .fare-price {
-    grid-column: auto;
-    grid-row: auto;
-    text-align: left;
-    border-left: 0;
-    border-top: 1px dashed #c5d5ef;
-    padding-left: 0;
-    padding-top: 0.52rem;
-    margin-top: 0.12rem;
-    align-items: flex-start;
-    gap: 0;
+    justify-self: end;
+    align-self: start;
+    text-align: right;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 340px;
+    min-width: 260px;
+    padding: 0.95rem 1.05rem;
+  }
+
+  .fare-price::before {
+    align-self: flex-end;
   }
 
   .fare-tag {
-    align-self: flex-start;
+    align-self: flex-end;
   }
 
   .fare-actions {
-    grid-column: auto;
-    grid-row: auto;
+    justify-self: end;
     width: 100%;
-    justify-self: stretch;
-    gap: 0.38rem;
+    max-width: 360px;
+    align-self: stretch;
   }
 
-  .fare-actions .select-fare-btn {
-    min-height: 48px;
-    padding: 0.6rem 0.9rem;
-    font-size: 0.87rem;
-    text-align: center;
+  .fare-actions__utility {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
-  .fare-quick {
-    min-height: 38px;
-    font-size: 0.76rem;
+@media (max-width: 900px) {
+  .search-summary__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .fare-form__row {

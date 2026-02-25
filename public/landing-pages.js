@@ -509,13 +509,67 @@
     });
   }
 
+  function stripTime(value) {
+    var raw = cleanText(value);
+    if (!raw) return '';
+    return raw.replace(/\b\d{1,2}:\d{2}\b/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  function formatRouteText(value) {
+    var raw = cleanText(value);
+    if (!raw) return '';
+
+    var viaMatch = raw.match(/\bvia\s+(.+)/i);
+    var viaText = viaMatch ? cleanText(viaMatch[1]) : '';
+    var baseRoute = viaMatch ? raw.replace(/\s+via\s+.+$/i, '') : raw;
+
+    var withArrow = baseRoute.replace(/\s+to\s+/i, ' \u2192 ');
+    if (viaText) {
+      return withArrow + ' \u00b7 via ' + viaText;
+    }
+    return withArrow;
+  }
+
+  function normalizeStops(text) {
+    var raw = cleanText(text);
+    if (!raw) return '';
+    if (/direct/i.test(raw)) return 'Direct';
+
+    var stopMatch = raw.match(/(\d+)\s*stop/i);
+    if (stopMatch) {
+      var n = parseInt(stopMatch[1], 10);
+      if (isFinite(n)) {
+        return n === 1 ? '1 stop' : n + ' stops';
+      }
+    }
+
+    if (/via/i.test(raw)) {
+      return raw.replace(/\s+/g, ' ').replace(/via\s*/i, 'via ');
+    }
+
+    return raw;
+  }
+
+  function titleCaseCabin(text) {
+    var raw = cleanText(text);
+    if (!raw) return '';
+    if (/premium\s*economy/i.test(raw)) return 'Premium Economy';
+    if (/business/i.test(raw)) return 'Business';
+    if (/first/i.test(raw)) return 'First';
+    if (/economy/i.test(raw)) return 'Economy';
+    return '';
+  }
+
   function parseLineParts(lineText) {
     var line = cleanText(lineText);
     if (!line) {
       return {
         route: '',
         date: '',
+        dateNoTime: '',
         stops: '',
+        cabin: '',
+        raw: '',
       };
     }
 
@@ -526,36 +580,120 @@
     }
 
     var segments = routePart.split('|').map(cleanText).filter(Boolean);
-    var route = segments[0] || '';
-    var date = segments[1] || '';
-    var stops = segments[2] || '';
+    var route = segments.shift() || '';
+    var date = segments.shift() || '';
+    var stops = '';
+    var cabin = '';
 
-    // Our fare lines often look like: ROUTE | DATE(+TIME) | CABIN
-    // In that case, segments[2] is cabin (e.g., Economy) not stops.
-    if (/\b(economy|premium\s*economy|business|first)\b/i.test(stops)) {
-      stops = '';
-    }
-
-    if (segments.length > 3 && !stops) {
-      stops = segments[3];
-    }
-
-    date = resolveRelativeDateToken(date);
+    segments.forEach(function (seg) {
+      if (!cabin && titleCaseCabin(seg)) {
+        cabin = titleCaseCabin(seg);
+        return;
+      }
+      if (!stops && /stop|direct|via/i.test(seg)) {
+        stops = normalizeStops(seg);
+        return;
+      }
+    });
 
     if (!stops) {
-      if (/\bvia\b/i.test(routePart)) {
-        stops = '1 Stop';
-      } else if (/\bdirect\b/i.test(routePart)) {
+      var viaMatch = route.match(/\bvia\s+(.+)/i);
+      if (viaMatch) {
+        stops = '1 stop via ' + cleanText(viaMatch[1]);
+      } else if (/direct/i.test(route)) {
         stops = 'Direct';
       }
     }
 
-    route = route.replace(/\s+to\s+/i, ' -> ');
+    if (!cabin && segments.length) {
+      var lastSeg = segments[segments.length - 1];
+      cabin = titleCaseCabin(lastSeg);
+    }
+
+    var resolvedDate = resolveRelativeDateToken(date);
 
     return {
-      route: route,
-      date: date,
+      route: formatRouteText(route),
+      date: resolvedDate,
+      dateNoTime: stripTime(resolvedDate),
+      stops: normalizeStops(stops),
+      cabin: cabin,
+      raw: line,
+    };
+  }
+
+  function parseTagText(tagText) {
+    var tag = cleanText(tagText);
+    if (!tag) {
+      return { stops: '', baggage: '', cabin: '' };
+    }
+
+    var stops = '';
+    var baggage = '';
+    var cabin = '';
+
+    var parts = tag.split('|').map(cleanText).filter(Boolean);
+    parts.forEach(function (part) {
+      if (!stops && /stop|direct/i.test(part)) {
+        stops = normalizeStops(part);
+      }
+      if (!baggage && /\b(bag|baggage|luggage|kg)\b/i.test(part)) {
+        baggage = part;
+      }
+      if (!cabin && titleCaseCabin(part)) {
+        cabin = titleCaseCabin(part);
+      }
+    });
+
+    return { stops: stops, baggage: baggage, cabin: cabin };
+  }
+
+  function buildFareMeta(item) {
+    var lines = Array.prototype.slice.call(item.querySelectorAll('.fare-line'));
+    var outbound = parseLineParts(lines[0] ? lines[0].textContent : '');
+    var inbound = parseLineParts(lines[1] ? lines[1].textContent : '');
+    var tagData = parseTagText(textContent(item, '.fare-tag'));
+
+    var route = outbound.route || (quoteFrom && quoteTo ? (quoteFrom + ' \u2192 ' + quoteTo) : '');
+
+    var dates = '';
+    if (outbound.dateNoTime && inbound.dateNoTime) {
+      dates = outbound.dateNoTime + ' \u2192 ' + inbound.dateNoTime;
+    } else if (outbound.dateNoTime) {
+      dates = outbound.dateNoTime;
+    } else if (inbound.dateNoTime) {
+      dates = inbound.dateNoTime;
+    } else {
+      dates = 'Dates flexible';
+    }
+
+    var stops = outbound.stops || inbound.stops || tagData.stops || '';
+    if (!stops && route && /via/i.test(route)) {
+      var viaMatch = route.match(/via\s+(.+)/i);
+      if (viaMatch) {
+        stops = '1 stop via ' + cleanText(viaMatch[1]);
+      }
+    }
+    if (!stops) {
+      stops = 'Stops to confirm';
+    }
+
+    var cabin = outbound.cabin || inbound.cabin || tagData.cabin || '';
+    if (!cabin) {
+      cabin = 'Cabin to confirm';
+    }
+
+    var baggage = tagData.baggage || '';
+    if (!baggage) {
+      baggage = 'Baggage on request';
+    }
+
+    return {
+      route: route || 'Route details',
+      dates: dates,
       stops: stops,
+      cabin: cabin,
+      baggage: baggage,
     };
   }
 
@@ -592,9 +730,7 @@
 
     var title = cleanText(titleEl.textContent);
     var airlineInfo = inferAirlineInfo(title);
-    var firstLine = textContent(details, '.fare-line');
-    var parsed = parseLineParts(firstLine);
-    var tag = textContent(details, '.fare-tag') || 'Fare rules apply';
+    var meta = buildFareMeta(item);
 
     var airlineWrap = document.createElement('div');
     airlineWrap.className = 'ticket-airline';
@@ -633,7 +769,7 @@
 
     var airlineRoute = document.createElement('span');
     airlineRoute.className = 'ticket-airline__route';
-    airlineRoute.textContent = parsed.route || (quoteFrom + ' -> ' + quoteTo);
+    airlineRoute.textContent = meta.route || (quoteFrom + ' -> ' + quoteTo);
 
     airlineText.appendChild(airlineName);
     airlineText.appendChild(airlineRoute);
@@ -650,10 +786,11 @@
 
     var metaWrap = document.createElement('div');
     metaWrap.className = 'ticket-meta';
-    metaWrap.appendChild(createMetaItem('ticket-meta__item--route', parsed.route || 'Route details'));
-    metaWrap.appendChild(createMetaItem('ticket-meta__item--date', parsed.date || 'Flexible dates'));
-    metaWrap.appendChild(createMetaItem('ticket-meta__item--stops', parsed.stops || 'Journey info'));
-    metaWrap.appendChild(createMetaItem('ticket-meta__item--baggage', tag));
+    metaWrap.appendChild(createMetaItem('ticket-meta__item--route', meta.route));
+    metaWrap.appendChild(createMetaItem('ticket-meta__item--date', meta.dates));
+    metaWrap.appendChild(createMetaItem('ticket-meta__item--stops', meta.stops));
+    metaWrap.appendChild(createMetaItem('ticket-meta__item--cabin', meta.cabin));
+    metaWrap.appendChild(createMetaItem('ticket-meta__item--baggage', meta.baggage));
 
     if (linesWrap) {
       details.insertBefore(metaWrap, linesWrap);
