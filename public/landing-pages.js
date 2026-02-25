@@ -225,7 +225,9 @@
     if (primaryLink) {
       var submitBtn = document.createElement('button');
       submitBtn.type = 'submit';
-      submitBtn.className = primaryLink.className;
+      // IMPORTANT: do NOT keep the .open-quote-form class, otherwise the global handler opens the modal.
+      submitBtn.className = 'btn btn--primary inline-search-submit';
+      submitBtn.setAttribute('data-inline-search-submit', '1');
       submitBtn.textContent = 'Search deals';
       primaryLink.parentNode.replaceChild(submitBtn, primaryLink);
     } else {
@@ -736,6 +738,11 @@
 
   Array.prototype.slice.call(document.querySelectorAll('.open-quote-form')).forEach(function (button) {
     button.addEventListener('click', function (event) {
+      // If this "button" is actually our inline-search submit, never open the modal.
+      if (button.getAttribute('data-inline-search-submit') === '1' || button.closest('#inline-search-form')) {
+        return;
+      }
+
       event.preventDefault();
       var context = button.getAttribute('data-quote-context') || 'General route enquiry';
       openModal({
