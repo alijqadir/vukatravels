@@ -1,0 +1,965 @@
+(function () {
+  var page = document.querySelector('.page');
+  if (!page) {
+    return;
+  }
+
+  var quoteFrom = page.getAttribute('data-quote-from') || '';
+  var quoteTo = page.getAttribute('data-quote-to') || '';
+  var quoteDestination = page.getAttribute('data-destination') || quoteTo;
+
+  var airlineRules = [
+    { pattern: /emirates/i, code: 'EK', name: 'Emirates', logo: '/airline-logos/emirates.svg' },
+    { pattern: /british airways/i, code: 'BA', name: 'British Airways', logo: '/airline-logos/britishairways.svg' },
+    { pattern: /etihad/i, code: 'EY', name: 'Etihad Airways', logo: '/airline-logos/etihadairways.svg' },
+    { pattern: /qatar/i, code: 'QR', name: 'Qatar Airways', logo: '/airline-logos/qatarairways.svg' },
+    { pattern: /pegasus/i, code: 'PC', name: 'Pegasus Airlines', logo: '/airline-logos/pegasusairlines.svg' },
+    { pattern: /kenya airways/i, code: 'KQ', name: 'Kenya Airways', logo: '/airline-logos/kenyaairways.svg' },
+    { pattern: /ethiopian/i, code: 'ET', name: 'Ethiopian Airlines', logo: '/airline-logos/ethiopianairlines.svg' },
+    { pattern: /turkish/i, code: 'TK', name: 'Turkish Airlines', logo: '/airline-logos/turkishairlines.svg' },
+    { pattern: /honeymoon|holiday|zanzibar|escape|package|safari/i, code: 'HG', name: 'Holiday Package', logo: '/favicon.jpeg' },
+  ];
+
+  var template = [
+    '<div class="fare-modal" id="fare-modal" aria-hidden="true">',
+    '  <div class="fare-modal__backdrop" data-close-modal></div>',
+    '  <div class="fare-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="fare-modal-title">',
+    '    <div class="fare-modal__hero">',
+    '      <div class="fare-modal__head">',
+    '        <span class="fare-modal__kicker">Fast Fare Request</span>',
+    '        <h2 class="fare-modal__title" id="fare-modal-title">Hold This Ticket</h2>',
+    '        <p class="fare-modal__subtitle">Complete this short form and our VUKA team will confirm live availability, baggage, and fare rules.</p>',
+    '      </div>',
+    '      <button type="button" class="fare-modal__close" aria-label="Close" data-close-modal>&times;</button>',
+    '    </div>',
+    '    <div class="fare-modal__content">',
+    '      <aside class="fare-picked">',
+    '        <p class="fare-picked__label">Your selected option</p>',
+    '        <p class="fare-picked__name" data-picked-name>Selected fare</p>',
+    '        <p class="fare-picked__meta" data-picked-meta></p>',
+    '        <ul class="fare-picked__list">',
+    '          <li>Checked against current seat inventory</li>',
+    '          <li>Baggage and conditions confirmed before payment</li>',
+    '          <li>Support from a UK-based VUKA consultant</li>',
+    '        </ul>',
+    '      </aside>',
+    '      <form class="fare-form" id="fare-quote-form">',
+    '        <div class="fare-form__row">',
+    '          <label>Full name<input type="text" name="name" required autocomplete="name" placeholder="Your full name" /></label>',
+    '          <label>Email<input type="email" name="email" required autocomplete="email" placeholder="you@email.com" /></label>',
+    '        </div>',
+    '        <div class="fare-form__row">',
+    '          <label>Phone<input type="tel" name="phone" required autocomplete="tel" placeholder="+44" /></label>',
+    '          <label>Passengers<input type="number" name="passengers" min="1" value="1" /></label>',
+    '        </div>',
+    '        <div class="fare-form__row">',
+    '          <label>Departure date<input type="date" name="departure_date" /></label>',
+    '          <label>Return date<input type="date" name="return_date" /></label>',
+    '        </div>',
+    '        <div class="fare-form__row">',
+    '          <label>Cabin<select name="cabin_class"><option value="Economy">Economy</option><option value="Premium Economy">Premium Economy</option><option value="Business">Business</option></select></label>',
+    '          <label>Trip type<select name="trip_type"><option value="Return">Return</option><option value="One Way">One Way</option><option value="Multi City">Multi City</option></select></label>',
+    '        </div>',
+    '        <label>Extra details<textarea name="message" placeholder="Add date flexibility, baggage needs, or traveller details"></textarea></label>',
+    '        <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" />',
+    '        <div class="fare-form__status" id="fare-form-status"></div>',
+    '        <button class="btn btn--primary" type="submit">Send Fare Request</button>',
+    '      </form>',
+    '    </div>',
+    '  </div>',
+    '</div>',
+  ].join('');
+
+  document.body.insertAdjacentHTML('beforeend', template);
+
+  function parseISODate(value) {
+    var raw = cleanText(value);
+    if (!raw) return null;
+    // Expect yyyy-mm-dd
+    var parts = raw.split('-');
+    if (parts.length !== 3) return null;
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    var d = parseInt(parts[2], 10);
+    if (!isFinite(y) || !isFinite(m) || !isFinite(d)) return null;
+    return new Date(y, m - 1, d, 12, 0, 0);
+  }
+
+  function updateSearchSummaryBox(label, value) {
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.search-box'));
+    boxes.forEach(function (box) {
+      var span = box.querySelector('span');
+      var strong = box.querySelector('strong');
+      if (!span || !strong) return;
+      if (cleanText(span.textContent).toLowerCase() === label.toLowerCase()) {
+        strong.textContent = value;
+      }
+    });
+  }
+
+  function replaceDateSegment(lineText, dateStr) {
+    var txt = cleanText(lineText);
+    if (!txt) return txt;
+
+    // strip "Outbound:" / "Inbound:" if present in the textContent
+    txt = txt.replace(/^outbound:\s*/i, '').replace(/^inbound:\s*/i, '');
+
+    var parts = txt.split('|').map(cleanText).filter(Boolean);
+    if (parts.length < 2) return txt;
+
+    // Preserve time if present anywhere
+    var timeMatch = txt.match(/\b(\d{1,2}:\d{2})\b/);
+    var dateWithTime = dateStr;
+    if (timeMatch) {
+      dateWithTime = dateWithTime + ' ' + timeMatch[1];
+    }
+
+    // Replace the first date-like segment (usually parts[1])
+    parts[1] = dateWithTime;
+
+    return parts.join(' | ');
+  }
+
+  function updateFareLinesWithDates(depDateObj, retDateObj) {
+    var depStr = depDateObj ? formatShortDate(depDateObj) : '';
+    var retStr = retDateObj ? formatShortDate(retDateObj) : '';
+
+    Array.prototype.slice.call(document.querySelectorAll('.fare-item')).forEach(function (item) {
+      var outLine = item.querySelector('.fare-line:nth-of-type(1)');
+      var inLine = item.querySelector('.fare-line:nth-of-type(2)');
+
+      if (outLine && depStr) {
+        // Only change the part after the label span
+        var span = outLine.querySelector('span');
+        var label = span ? (span.textContent || '') : 'Outbound:';
+        var rest = outLine.textContent.replace(label, '');
+        var updated = replaceDateSegment(rest, depStr);
+        outLine.innerHTML = '<span>' + cleanText(label) + '</span> ' + updated;
+      }
+
+      if (inLine && retStr) {
+        var span2 = inLine.querySelector('span');
+        var label2 = span2 ? (span2.textContent || '') : 'Inbound:';
+        var rest2 = inLine.textContent.replace(label2, '');
+        var updated2 = replaceDateSegment(rest2, retStr);
+        inLine.innerHTML = '<span>' + cleanText(label2) + '</span> ' + updated2;
+      }
+
+      // Refresh relative tokens + ticket meta date chip
+      Array.prototype.slice.call(item.querySelectorAll('.fare-line')).forEach(function (lineEl) {
+        resolveRelativeTokensInElement(lineEl);
+      });
+
+      var metaDate = item.querySelector('.ticket-meta__item--date');
+      if (metaDate && depStr) {
+        metaDate.textContent = depStr + (retStr ? ' → ' + retStr : '');
+      }
+    });
+  }
+
+  function enhanceSearchSummaryToInlineForm() {
+    var summary = document.querySelector('.search-summary');
+    if (!summary) return;
+    if (summary.querySelector('#inline-search-form')) return;
+
+    var grid = summary.querySelector('.search-summary__grid');
+    if (!grid) return;
+
+    var actionRow = summary.querySelector('.action-row');
+    if (!actionRow) return;
+
+    // Create a real <form> wrapper so Enter key works + we can disable submit.
+    var form = document.createElement('form');
+    form.className = 'inline-search-form';
+    form.id = 'inline-search-form';
+
+    // Move grid + fields + actionRow into the form.
+    summary.insertBefore(form, grid);
+    form.appendChild(grid);
+
+    // Replace selected boxes with inputs/selects (Passengers/Cabin/Trip Type)
+    function replaceBoxValue(label, html) {
+      var boxes = Array.prototype.slice.call(grid.querySelectorAll('.search-box'));
+      for (var i = 0; i < boxes.length; i += 1) {
+        var span = boxes[i].querySelector('span');
+        var strong = boxes[i].querySelector('strong');
+        if (!span || !strong) continue;
+        if (cleanText(span.textContent).toLowerCase() !== label.toLowerCase()) continue;
+        strong.innerHTML = html;
+        return;
+      }
+    }
+
+    replaceBoxValue('Trip Type', '<span class="search-box__control"><select name="trip_type" aria-label="Trip type"><option value="Return" selected>Return</option><option value="One Way">One Way</option></select></span>');
+    replaceBoxValue('Cabin', '<span class="search-box__control"><select name="cabin_class" aria-label="Cabin"><option value="Economy" selected>Economy</option><option value="Premium Economy">Premium Economy</option><option value="Business">Business</option></select></span>');
+    replaceBoxValue('Passengers', '<span class="search-box__control"><input type="number" name="passengers" aria-label="Passengers" min="1" value="1" /></span>');
+
+    // Add always-visible lead-gated fields + dates as additional "search-box" rows (so it feels like ONE form)
+    var fieldsGrid = document.createElement('div');
+    fieldsGrid.className = 'search-summary__grid search-summary__grid--fields';
+
+    function box(label, innerHtml) {
+      return [
+        '<div class="search-box">',
+        '  <span>' + label + '</span>',
+        '  <div class="search-box__control">' + innerHtml + '</div>',
+        '</div>'
+      ].join('');
+    }
+
+    fieldsGrid.innerHTML = [
+      box('Full name', '<input type="text" name="name" required autocomplete="name" placeholder="Your full name" />'),
+      box('Email', '<input type="email" name="email" required autocomplete="email" placeholder="you@email.com" />'),
+      box('Phone', '<input type="tel" name="phone" required autocomplete="tel" placeholder="+44" />'),
+      box('Departure date', '<input type="date" name="departure_date" required />'),
+      box('Return date', '<input type="date" name="return_date" />'),
+      '<div class="search-box search-box--wide">',
+      '  <span>Extra details</span>',
+      '  <div class="search-box__control">',
+      '    <textarea name="message" placeholder="Optional: baggage, flexibility, preferred airline"></textarea>',
+      '  </div>',
+      '</div>',
+      '<input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" />',
+      '<div class="fare-form__status" id="inline-search-status"></div>'
+    ].join('');
+
+    form.appendChild(fieldsGrid);
+
+    // Move actionRow into the form and convert primary CTA into a submit button.
+    form.appendChild(actionRow);
+
+    // Disable modal-opening CTA if it still exists (safety)
+    Array.prototype.slice.call(actionRow.querySelectorAll('.open-quote-form')).forEach(function (lnk) {
+      lnk.addEventListener('click', function (e) { e.preventDefault(); }, true);
+    });
+
+    var primaryLink = actionRow.querySelector('.open-quote-form');
+    if (primaryLink) {
+      var submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      // IMPORTANT: do NOT keep the .open-quote-form class, otherwise the global handler opens the modal.
+      submitBtn.className = 'btn btn--primary inline-search-submit';
+      submitBtn.setAttribute('data-inline-search-submit', '1');
+      submitBtn.textContent = 'Search deals';
+      primaryLink.parentNode.replaceChild(submitBtn, primaryLink);
+    } else {
+      // fallback: if template differs, ensure we still have a submit button
+      var btn2 = document.createElement('button');
+      btn2.type = 'submit';
+      btn2.className = 'btn btn--primary';
+      btn2.textContent = 'Search deals';
+      actionRow.insertBefore(btn2, actionRow.firstChild);
+    }
+
+    var statusEl = form.querySelector('#inline-search-status');
+
+    function setInlineStatus(message, type) {
+      if (!statusEl) return;
+      statusEl.textContent = message;
+      statusEl.className = 'fare-form__status is-visible';
+      if (type === 'error') statusEl.classList.add('is-error');
+      if (type === 'success') statusEl.classList.add('is-success');
+    }
+
+    function clearInlineStatus() {
+      if (!statusEl) return;
+      statusEl.textContent = '';
+      statusEl.className = 'fare-form__status';
+    }
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      clearInlineStatus();
+
+      var fd = new FormData(form);
+      var depRaw = cleanText(fd.get('departure_date'));
+      var retRaw = cleanText(fd.get('return_date'));
+
+      var payload = {
+        formType: 'landing_inline_search',
+        name: cleanText(fd.get('name')),
+        email: cleanText(fd.get('email')),
+        phone: cleanText(fd.get('phone')),
+        from: quoteFrom,
+        to: quoteTo,
+        destination: quoteDestination,
+        departureDate: depRaw,
+        returnDate: retRaw,
+        passengers: cleanText(fd.get('passengers')),
+        cabinClass: cleanText(fd.get('cabin_class')),
+        tripType: cleanText(fd.get('trip_type')) || 'Return',
+        message: cleanText(fd.get('message')) || ('Inline search request: ' + quoteFrom + ' -> ' + quoteTo + ' | ' + depRaw + (retRaw ? (' to ' + retRaw) : '')),
+        pageUrl: window.location.href,
+        selectedFareName: '',
+        selectedFarePrice: '',
+        selectedFareTag: 'Inline Search',
+        selectedFareDetails: '',
+        selectedFareCurrency: 'GBP',
+        website: cleanText(fd.get('website')),
+      };
+
+      if (!payload.name || !payload.email || !payload.phone || !payload.departureDate) {
+        setInlineStatus('Please complete name, email, phone, and departure date.', 'error');
+        return;
+      }
+
+      var btn = actionRow.querySelector('button[type="submit"]');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Searching...';
+      }
+
+      fetch('/api/submit.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+        .then(function (res) {
+          return res.text().then(function (text) {
+            var data = null;
+            if (text) {
+              try { data = JSON.parse(text); } catch (e) { data = null; }
+            }
+            if (!res.ok) {
+              var message = data && data.error ? data.error : 'Could not search right now. Please try again.';
+              throw new Error(message);
+            }
+            return data;
+          });
+        })
+        .then(function (resp) {
+          // Store lead context for later ticket click tracking + post-lead UX
+          window.__inlineLead = {
+            leadId: resp && resp.lead_id ? String(resp.lead_id) : '',
+            name: payload.name,
+            email: payload.email,
+            phone: payload.phone,
+            from: payload.from,
+            to: payload.to,
+            destination: payload.destination,
+            departureDate: payload.departureDate,
+            returnDate: payload.returnDate,
+            passengers: payload.passengers,
+            cabinClass: payload.cabinClass,
+            tripType: payload.tripType,
+          };
+
+          var depObj = parseISODate(depRaw);
+          var retObj = parseISODate(retRaw);
+          updateFareLinesWithDates(depObj, retObj);
+
+          // Rebuild ticket utilities (WhatsApp/Call) so they include updated dates in the message
+          Array.prototype.slice.call(document.querySelectorAll('.fare-item')).forEach(function (it) {
+            decorateFareItem(it);
+          });
+
+          updateSearchSummaryBox('Passengers', (payload.passengers || '1') + ' Traveller');
+          updateSearchSummaryBox('Cabin', payload.cabinClass || 'Economy');
+          updateSearchSummaryBox('Trip Type', payload.tripType || 'Return');
+
+          setInlineStatus('Showing tentative options for your selected dates. We’ll confirm live availability before booking.', 'success');
+
+          var fareSection = document.querySelector('.fare-list');
+          if (fareSection && fareSection.scrollIntoView) {
+            fareSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        })
+        .catch(function (error) {
+          var msg = (error && error.message) ? error.message : 'Could not search right now. Please try again.';
+          setInlineStatus(msg, 'error');
+        })
+        .finally(function () {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Search deals';
+          }
+        });
+    });
+  }
+
+  enhanceSearchSummaryToInlineForm();
+
+  var modal = document.getElementById('fare-modal');
+  var form = document.getElementById('fare-quote-form');
+  var pickedNameEl = modal.querySelector('[data-picked-name]');
+  var pickedMetaEl = modal.querySelector('[data-picked-meta]');
+  var statusEl = document.getElementById('fare-form-status');
+
+  var selectedFare = {
+    name: 'General fare enquiry',
+    price: '',
+    tag: '',
+    details: 'Please send live fare options.',
+  };
+
+  function getSupportPhoneFromPage() {
+    var phoneLink = document.querySelector('.topbar a[href^="tel:"]') || document.querySelector('a[href^="tel:"]');
+    if (!phoneLink) {
+      return '+442038768217';
+    }
+
+    var rawHref = (phoneLink.getAttribute('href') || '').replace(/^tel:/i, '');
+    var normalizedPhone = rawHref.replace(/[^\d+]/g, '');
+    return normalizedPhone || '+442038768217';
+  }
+
+  var supportPhoneHref = getSupportPhoneFromPage();
+  var supportWhatsappNumber = supportPhoneHref.replace(/[^\d]/g, '') || '442038768217';
+
+  function cleanText(value) {
+    return (value || '').toString().replace(/\s+/g, ' ').trim();
+  }
+
+  function lockBody(isLocked) {
+    document.body.style.overflow = isLocked ? 'hidden' : '';
+  }
+
+  function setStatus(message, type) {
+    if (!statusEl) return;
+    statusEl.textContent = message;
+    statusEl.className = 'fare-form__status is-visible';
+    if (type === 'error') {
+      statusEl.classList.add('is-error');
+    }
+    if (type === 'success') {
+      statusEl.classList.add('is-success');
+    }
+  }
+
+  function clearStatus() {
+    if (!statusEl) return;
+    statusEl.textContent = '';
+    statusEl.className = 'fare-form__status';
+  }
+
+  function textContent(node, selector) {
+    var el = node.querySelector(selector);
+    return el ? cleanText(el.textContent) : '';
+  }
+
+  function inferAirlineInfo(title) {
+    var rule = null;
+    for (var i = 0; i < airlineRules.length; i += 1) {
+      if (airlineRules[i].pattern.test(title)) {
+        rule = airlineRules[i];
+        break;
+      }
+    }
+
+    if (rule) {
+      return rule;
+    }
+
+    var initials = cleanText(title)
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(function (part) { return part[0] ? part[0].toUpperCase() : ''; })
+      .join('');
+
+    return {
+      code: initials || 'VF',
+      name: cleanText(title).split(' ').slice(0, 2).join(' ') || 'VUKA Fare',
+      logo: '/favicon.jpeg',
+    };
+  }
+
+  function formatShortDate(dateObj) {
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var dd = String(dateObj.getDate()).padStart(2, '0');
+    var mm = months[dateObj.getMonth()];
+    var yy = dateObj.getFullYear();
+    return dd + ' ' + mm + ' ' + yy;
+  }
+
+  function resolveRelativeDateToken(text) {
+    // Supports tokens like: "T+21" or "T+21 09:15" anywhere in the segment.
+    var raw = cleanText(text);
+    if (!raw) return raw;
+
+    var m = raw.match(/\bT\+(\d{1,4})\b/);
+    if (!m) return raw;
+
+    var offsetDays = parseInt(m[1], 10);
+    if (!isFinite(offsetDays)) return raw;
+
+    var now = new Date();
+    // Use local noon to avoid DST edge weirdness
+    var base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+    base.setDate(base.getDate() + offsetDays);
+
+    var resolved = formatShortDate(base);
+    // keep any time part if present
+    var timeMatch = raw.match(/\b(\d{1,2}:\d{2})\b/);
+    if (timeMatch) {
+      resolved = resolved + ' ' + timeMatch[1];
+    }
+
+    return raw.replace(/\bT\+\d{1,4}\b/, resolved);
+  }
+
+  function resolveRelativeTokensInElement(el) {
+    if (!el) return;
+    var txt = cleanText(el.textContent);
+    if (!txt || txt.indexOf('T+') === -1) return;
+    el.textContent = txt.replace(/\bT\+\d{1,4}\b/g, function (match) {
+      return resolveRelativeDateToken(match);
+    });
+  }
+
+  function parseLineParts(lineText) {
+    var line = cleanText(lineText);
+    if (!line) {
+      return {
+        route: '',
+        date: '',
+        stops: '',
+      };
+    }
+
+    var routePart = line;
+    var colonIndex = line.indexOf(':');
+    if (colonIndex >= 0) {
+      routePart = cleanText(line.slice(colonIndex + 1));
+    }
+
+    var segments = routePart.split('|').map(cleanText).filter(Boolean);
+    var route = segments[0] || '';
+    var date = segments[1] || '';
+    var stops = segments[2] || '';
+
+    if (segments.length > 3 && !stops) {
+      stops = segments[3];
+    }
+
+    date = resolveRelativeDateToken(date);
+
+    if (!stops) {
+      if (/\bvia\b/i.test(routePart)) {
+        stops = '1 Stop';
+      } else if (/\bdirect\b/i.test(routePart)) {
+        stops = 'Direct';
+      }
+    }
+
+    route = route.replace(/\s+to\s+/i, ' -> ');
+
+    return {
+      route: route,
+      date: date,
+      stops: stops,
+    };
+  }
+
+  function createMetaItem(className, value) {
+    var item = document.createElement('span');
+    item.className = 'ticket-meta__item ' + className;
+    item.textContent = value;
+    return item;
+  }
+
+  function buildWhatsappHref(fare) {
+    var messageParts = [
+      'Hi VUKA Travels, I want this fare.',
+      fare && fare.name ? 'Option: ' + fare.name : '',
+      fare && fare.price ? 'Price: ' + fare.price : '',
+      fare && fare.details ? 'Details: ' + fare.details : '',
+      'Please share live availability.',
+    ];
+
+    var message = messageParts.filter(Boolean).join(' | ');
+    return 'https://wa.me/' + supportWhatsappNumber + '?text=' + encodeURIComponent(message);
+  }
+
+  function decorateFareItem(item) {
+    if (!item || item.getAttribute('data-ticket-enhanced') === '1') {
+      return;
+    }
+
+    var details = item.querySelector('.fare-details');
+    var titleEl = details ? details.querySelector('.fare-title') : null;
+    if (!details || !titleEl) {
+      return;
+    }
+
+    var title = cleanText(titleEl.textContent);
+    var airlineInfo = inferAirlineInfo(title);
+    var firstLine = textContent(details, '.fare-line');
+    var parsed = parseLineParts(firstLine);
+    var tag = textContent(details, '.fare-tag') || 'Fare rules apply';
+
+    var airlineWrap = document.createElement('div');
+    airlineWrap.className = 'ticket-airline';
+
+    var logo = document.createElement('span');
+    logo.className = 'ticket-logo';
+    logo.setAttribute('data-airline', airlineInfo.code);
+
+    var logoImg = document.createElement('img');
+    logoImg.className = 'ticket-logo__img';
+    logoImg.alt = airlineInfo.name + ' logo';
+
+    var logoFallback = document.createElement('span');
+    logoFallback.className = 'ticket-logo__fallback';
+    logoFallback.textContent = airlineInfo.code;
+
+    logo.appendChild(logoImg);
+    logo.appendChild(logoFallback);
+
+    if (airlineInfo.logo) {
+      logoImg.addEventListener('load', function () {
+        logo.classList.add('ticket-logo--loaded');
+      });
+      logoImg.addEventListener('error', function () {
+        logo.classList.remove('ticket-logo--loaded');
+      });
+      logoImg.src = airlineInfo.logo;
+    }
+
+    var airlineText = document.createElement('div');
+    airlineText.className = 'ticket-airline__text';
+
+    var airlineName = document.createElement('span');
+    airlineName.className = 'ticket-airline__name';
+    airlineName.textContent = airlineInfo.name;
+
+    var airlineRoute = document.createElement('span');
+    airlineRoute.className = 'ticket-airline__route';
+    airlineRoute.textContent = parsed.route || (quoteFrom + ' -> ' + quoteTo);
+
+    airlineText.appendChild(airlineName);
+    airlineText.appendChild(airlineRoute);
+    airlineWrap.appendChild(logo);
+    airlineWrap.appendChild(airlineText);
+
+    details.insertBefore(airlineWrap, titleEl);
+
+    var linesWrap = details.querySelector('.fare-lines');
+    // Make relative tokens visible on the page too (not just inside parsed meta)
+    Array.prototype.slice.call(item.querySelectorAll('.fare-line')).forEach(function (lineEl) {
+      resolveRelativeTokensInElement(lineEl);
+    });
+
+    var metaWrap = document.createElement('div');
+    metaWrap.className = 'ticket-meta';
+    metaWrap.appendChild(createMetaItem('ticket-meta__item--route', parsed.route || 'Route details'));
+    metaWrap.appendChild(createMetaItem('ticket-meta__item--date', parsed.date || 'Flexible dates'));
+    metaWrap.appendChild(createMetaItem('ticket-meta__item--stops', parsed.stops || 'Journey info'));
+    metaWrap.appendChild(createMetaItem('ticket-meta__item--baggage', tag));
+
+    if (linesWrap) {
+      details.insertBefore(metaWrap, linesWrap);
+    } else {
+      details.appendChild(metaWrap);
+    }
+
+    var selectBtn = item.querySelector('.select-fare-btn');
+    if (selectBtn) {
+      // Ensure actions wrapper exists (some pages may already have a .fare-actions block)
+      var actionsWrap = item.querySelector('.fare-actions');
+      if (!actionsWrap) {
+        actionsWrap = document.createElement('div');
+        actionsWrap.className = 'fare-actions';
+        item.insertBefore(actionsWrap, selectBtn);
+      }
+
+      // Ensure utility exists (WhatsApp + Call)
+      var utilityWrap = actionsWrap.querySelector('.fare-actions__utility');
+      if (!utilityWrap) {
+        utilityWrap = document.createElement('div');
+        utilityWrap.className = 'fare-actions__utility';
+        actionsWrap.appendChild(utilityWrap);
+      }
+
+      // (Re)build the utility links so they never disappear
+      utilityWrap.innerHTML = '';
+      var fareData = collectFareFromRow(selectBtn);
+
+      var whatsappLink = document.createElement('a');
+      whatsappLink.className = 'fare-quick fare-quick--wa';
+      whatsappLink.href = buildWhatsappHref(fareData);
+      whatsappLink.target = '_blank';
+      whatsappLink.rel = 'noopener noreferrer';
+      whatsappLink.textContent = 'WhatsApp';
+      whatsappLink.setAttribute('aria-label', 'WhatsApp this fare');
+
+      var callLink = document.createElement('a');
+      callLink.className = 'fare-quick fare-quick--call';
+      callLink.href = 'tel:' + supportPhoneHref;
+      callLink.textContent = 'Call';
+      callLink.setAttribute('aria-label', 'Call to book this fare');
+
+      utilityWrap.appendChild(whatsappLink);
+      utilityWrap.appendChild(callLink);
+
+      selectBtn.textContent = 'Book Now';
+      selectBtn.classList.add('fare-select-btn');
+
+      // Ensure the CTA button is inside the actions wrapper.
+      if (selectBtn.parentNode !== actionsWrap) {
+        actionsWrap.appendChild(selectBtn);
+      }
+    }
+
+    item.setAttribute('data-ticket-enhanced', '1');
+  }
+
+  function collectFareFromRow(button) {
+    var item = button.closest('.fare-item');
+    if (!item) {
+      return {
+        name: 'General fare enquiry',
+        price: '',
+        tag: '',
+        details: 'Please send live fare options.',
+      };
+    }
+
+    var lines = Array.prototype.slice.call(item.querySelectorAll('.fare-line'))
+      .map(function (line) {
+        return cleanText(line.textContent);
+      })
+      .filter(Boolean)
+      .join(' | ');
+
+    var airlineName = textContent(item, '.ticket-airline__name');
+    var route = textContent(item, '.ticket-airline__route');
+
+    var detailParts = [];
+    if (airlineName) detailParts.push(airlineName);
+    if (route) detailParts.push(route);
+    if (lines) detailParts.push(lines);
+
+    return {
+      name: textContent(item, '.fare-title') || 'Selected fare',
+      price: textContent(item, '.fare-price strong'),
+      tag: textContent(item, '.fare-tag'),
+      details: detailParts.join(' | '),
+    };
+  }
+
+  function openModal(fare) {
+    selectedFare = fare;
+    pickedNameEl.textContent = fare.name || 'Selected fare';
+
+    var metaParts = [];
+    if (fare.price) {
+      metaParts.push('Price: ' + fare.price);
+    }
+    if (fare.tag) {
+      metaParts.push('Type: ' + fare.tag);
+    }
+    if (fare.details) {
+      metaParts.push(fare.details);
+    }
+    pickedMetaEl.textContent = metaParts.join(' | ');
+
+    clearStatus();
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    lockBody(true);
+
+    var nameInput = form.querySelector('input[name="name"]');
+    if (nameInput) {
+      nameInput.focus();
+    }
+  }
+
+  function closeModal() {
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    lockBody(false);
+  }
+
+  Array.prototype.slice.call(document.querySelectorAll('.fare-item')).forEach(function (item) {
+    decorateFareItem(item);
+  });
+
+  function showTicketProcessedToast(text) {
+    var existing = document.getElementById('ticket-toast');
+    if (existing) existing.remove();
+
+    var el = document.createElement('div');
+    el.id = 'ticket-toast';
+    el.className = 'ticket-toast';
+    el.innerHTML = '<div class="ticket-toast__inner"><strong>Request received</strong><p>' + (text || 'We’re processing your request now. Please expect a call or WhatsApp confirmation shortly.') + '</p></div>';
+    document.body.appendChild(el);
+
+    setTimeout(function () {
+      el.classList.add('is-visible');
+    }, 10);
+
+    setTimeout(function () {
+      el.classList.remove('is-visible');
+      setTimeout(function () { el.remove(); }, 250);
+    }, 3800);
+  }
+
+  function trackTicketClick(fare) {
+    var lead = window.__inlineLead || {};
+    if (!lead.email || !lead.phone) return;
+
+    var payload = {
+      formType: 'landing_ticket_click',
+      name: lead.name || '',
+      email: lead.email || '',
+      phone: lead.phone || '',
+      from: lead.from || quoteFrom,
+      to: lead.to || quoteTo,
+      destination: lead.destination || quoteDestination,
+      departureDate: lead.departureDate || '',
+      returnDate: lead.returnDate || '',
+      passengers: lead.passengers || '',
+      cabinClass: lead.cabinClass || '',
+      tripType: lead.tripType || 'Return',
+      message: 'User clicked Book Now after inline search. lead_id=' + (lead.leadId || '') ,
+      pageUrl: window.location.href,
+      selectedFareName: fare.name || '',
+      selectedFarePrice: fare.price || '',
+      selectedFareTag: fare.tag || '',
+      selectedFareDetails: fare.details || '',
+      selectedFareCurrency: 'GBP',
+      website: '',
+      parentLeadId: lead.leadId || '',
+    };
+
+    fetch('/api/submit.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(function () { /* ignore */ });
+  }
+
+  // Event delegation: Book Now behaviour depends on whether we already captured the inline-search lead.
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!target) return;
+
+    var btn = target.closest ? target.closest('.select-fare-btn') : null;
+    if (!btn) return;
+
+    event.preventDefault();
+    var fare = collectFareFromRow(btn);
+
+    // If lead already captured via inline search, don't ask again. Log click + show confirmation.
+    if (window.__inlineLead && window.__inlineLead.email) {
+      trackTicketClick(fare);
+      showTicketProcessedToast('We’ve noted your selected option. We’re processing it now — expect a call or WhatsApp confirmation shortly.');
+      return;
+    }
+
+    // Otherwise open the modal (lead capture).
+    openModal(fare);
+  });
+
+  Array.prototype.slice.call(document.querySelectorAll('.open-quote-form')).forEach(function (button) {
+    button.addEventListener('click', function (event) {
+      // If this "button" is actually our inline-search submit, never open the modal.
+      if (button.getAttribute('data-inline-search-submit') === '1' || button.closest('#inline-search-form')) {
+        return;
+      }
+
+      event.preventDefault();
+      var context = button.getAttribute('data-quote-context') || 'General route enquiry';
+      openModal({
+        name: context,
+        price: '',
+        tag: 'Live Quote',
+        details: 'Please send the best current options for this route.',
+      });
+    });
+  });
+
+  Array.prototype.slice.call(modal.querySelectorAll('[data-close-modal]')).forEach(function (el) {
+    el.addEventListener('click', closeModal);
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+      closeModal();
+    }
+  });
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    clearStatus();
+
+    var formData = new FormData(form);
+    var payload = {
+      formType: 'landing_fare_quote',
+      name: cleanText(formData.get('name')),
+      email: cleanText(formData.get('email')),
+      phone: cleanText(formData.get('phone')),
+      message: cleanText(formData.get('message')),
+      destination: quoteDestination,
+      from: quoteFrom,
+      to: quoteTo,
+      departureDate: cleanText(formData.get('departure_date')),
+      returnDate: cleanText(formData.get('return_date')),
+      passengers: cleanText(formData.get('passengers')),
+      cabinClass: cleanText(formData.get('cabin_class')),
+      tripType: cleanText(formData.get('trip_type')) || 'Return',
+      pageUrl: window.location.href,
+      selectedFareName: selectedFare.name,
+      selectedFarePrice: selectedFare.price,
+      selectedFareTag: selectedFare.tag,
+      selectedFareDetails: selectedFare.details,
+      selectedFareCurrency: 'GBP',
+      website: cleanText(formData.get('website')),
+    };
+
+    if (!payload.name || !payload.email || !payload.phone) {
+      setStatus('Please complete name, email, and phone.', 'error');
+      return;
+    }
+
+    var submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+    }
+
+    fetch('/api/submit.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(function (res) {
+        return res.text().then(function (text) {
+          var data = null;
+          if (text) {
+            try {
+              data = JSON.parse(text);
+            } catch (error) {
+              data = null;
+            }
+          }
+
+          if (!res.ok) {
+            var message = data && data.error ? data.error : 'Could not send request right now. Please try again.';
+            throw new Error(message);
+          }
+
+          return data;
+        });
+      })
+      .then(function () {
+        setStatus('Thanks. Your fare request has been sent. Our team will contact you shortly.', 'success');
+        form.reset();
+      })
+      .catch(function (error) {
+        var errMessage = (error && error.message) ? error.message : 'Could not send request right now. Please try again.';
+        setStatus(errMessage, 'error');
+      })
+      .finally(function () {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send Fare Request';
+        }
+      });
+  });
+})();
