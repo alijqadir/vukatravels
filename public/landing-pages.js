@@ -190,27 +190,22 @@
       }
     }
 
-    replaceBoxValue('Trip Type', '<select name="trip_type" aria-label="Trip type"><option value="Return" selected>Return</option><option value="One Way">One Way</option></select>');
-    replaceBoxValue('Cabin', '<select name="cabin_class" aria-label="Cabin"><option value="Economy" selected>Economy</option><option value="Premium Economy">Premium Economy</option><option value="Business">Business</option></select>');
-    replaceBoxValue('Passengers', '<input type="number" name="passengers" aria-label="Passengers" min="1" value="1" style="width:100%;" />');
+    replaceBoxValue('Trip Type', '<span class="search-box__control"><select name="trip_type" aria-label="Trip type"><option value="Return" selected>Return</option><option value="One Way">One Way</option></select></span>');
+    replaceBoxValue('Cabin', '<span class="search-box__control"><select name="cabin_class" aria-label="Cabin"><option value="Economy" selected>Economy</option><option value="Premium Economy">Premium Economy</option><option value="Business">Business</option></select></span>');
+    replaceBoxValue('Passengers', '<span class="search-box__control"><input type="number" name="passengers" aria-label="Passengers" min="1" value="1" /></span>');
 
     // Add always-visible lead-gated fields + dates (inside the same card)
     var fields = document.createElement('div');
-    fields.className = 'fare-form';
-    fields.style.marginTop = '0.85rem';
+    fields.className = 'inline-search-fields';
 
     fields.innerHTML = [
-      '  <div class="fare-form__row">',
+      '  <div class="inline-search-fields__grid">',
       '    <label>Full name<input type="text" name="name" required autocomplete="name" placeholder="Your full name" /></label>',
       '    <label>Email<input type="email" name="email" required autocomplete="email" placeholder="you@email.com" /></label>',
-      '  </div>',
-      '  <div class="fare-form__row">',
       '    <label>Phone<input type="tel" name="phone" required autocomplete="tel" placeholder="+44" /></label>',
       '    <label>Departure date<input type="date" name="departure_date" required /></label>',
-      '  </div>',
-      '  <div class="fare-form__row">',
       '    <label>Return date<input type="date" name="return_date" /></label>',
-      '    <label>Extra details<textarea name="message" placeholder="Optional: baggage, flexibility, preferred airline"></textarea></label>',
+      '    <label class="inline-search-fields__message">Extra details<textarea name="message" placeholder="Optional: baggage, flexibility, preferred airline"></textarea></label>',
       '  </div>',
       '  <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" />',
       '  <div class="fare-form__status" id="inline-search-status"></div>'
@@ -220,6 +215,11 @@
 
     // Move actionRow into the form and convert primary CTA into a submit button.
     form.appendChild(actionRow);
+
+    // Disable modal-opening CTA if it still exists (safety)
+    Array.prototype.slice.call(actionRow.querySelectorAll('.open-quote-form')).forEach(function (lnk) {
+      lnk.addEventListener('click', function (e) { e.preventDefault(); }, true);
+    });
 
     var primaryLink = actionRow.querySelector('.open-quote-form');
     if (primaryLink) {
