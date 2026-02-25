@@ -72,6 +72,241 @@
 
   document.body.insertAdjacentHTML('beforeend', template);
 
+  function parseISODate(value) {
+    var raw = cleanText(value);
+    if (!raw) return null;
+    // Expect yyyy-mm-dd
+    var parts = raw.split('-');
+    if (parts.length !== 3) return null;
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    var d = parseInt(parts[2], 10);
+    if (!isFinite(y) || !isFinite(m) || !isFinite(d)) return null;
+    return new Date(y, m - 1, d, 12, 0, 0);
+  }
+
+  function updateSearchSummaryBox(label, value) {
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.search-box'));
+    boxes.forEach(function (box) {
+      var span = box.querySelector('span');
+      var strong = box.querySelector('strong');
+      if (!span || !strong) return;
+      if (cleanText(span.textContent).toLowerCase() === label.toLowerCase()) {
+        strong.textContent = value;
+      }
+    });
+  }
+
+  function replaceDateSegment(lineText, dateStr) {
+    var txt = cleanText(lineText);
+    if (!txt) return txt;
+
+    // strip "Outbound:" / "Inbound:" if present in the textContent
+    txt = txt.replace(/^outbound:\s*/i, '').replace(/^inbound:\s*/i, '');
+
+    var parts = txt.split('|').map(cleanText).filter(Boolean);
+    if (parts.length < 2) return txt;
+
+    // Preserve time if present anywhere
+    var timeMatch = txt.match(/\b(\d{1,2}:\d{2})\b/);
+    var dateWithTime = dateStr;
+    if (timeMatch) {
+      dateWithTime = dateWithTime + ' ' + timeMatch[1];
+    }
+
+    // Replace the first date-like segment (usually parts[1])
+    parts[1] = dateWithTime;
+
+    return parts.join(' | ');
+  }
+
+  function updateFareLinesWithDates(depDateObj, retDateObj) {
+    var depStr = depDateObj ? formatShortDate(depDateObj) : '';
+    var retStr = retDateObj ? formatShortDate(retDateObj) : '';
+
+    Array.prototype.slice.call(document.querySelectorAll('.fare-item')).forEach(function (item) {
+      var outLine = item.querySelector('.fare-line:nth-of-type(1)');
+      var inLine = item.querySelector('.fare-line:nth-of-type(2)');
+
+      if (outLine && depStr) {
+        // Only change the part after the label span
+        var span = outLine.querySelector('span');
+        var label = span ? (span.textContent || '') : 'Outbound:';
+        var rest = outLine.textContent.replace(label, '');
+        var updated = replaceDateSegment(rest, depStr);
+        outLine.innerHTML = '<span>' + cleanText(label) + '</span> ' + updated;
+      }
+
+      if (inLine && retStr) {
+        var span2 = inLine.querySelector('span');
+        var label2 = span2 ? (span2.textContent || '') : 'Inbound:';
+        var rest2 = inLine.textContent.replace(label2, '');
+        var updated2 = replaceDateSegment(rest2, retStr);
+        inLine.innerHTML = '<span>' + cleanText(label2) + '</span> ' + updated2;
+      }
+
+      // Refresh relative tokens + ticket meta date chip
+      Array.prototype.slice.call(item.querySelectorAll('.fare-line')).forEach(function (lineEl) {
+        resolveRelativeTokensInElement(lineEl);
+      });
+
+      var metaDate = item.querySelector('.ticket-meta__item--date');
+      if (metaDate && depStr) {
+        metaDate.textContent = depStr + (retStr ? ' → ' + retStr : '');
+      }
+    });
+  }
+
+  function injectInlineSearchForm() {
+    var summary = document.querySelector('.search-summary');
+    if (!summary) return;
+    if (summary.querySelector('#inline-search-form')) return;
+
+    var formWrap = document.createElement('div');
+    formWrap.className = 'inline-search';
+
+    formWrap.innerHTML = [
+      '<form class="fare-form" id="inline-search-form">',
+      '  <div class="fare-form__row">',
+      '    <label>Departure date<input type="date" name="departure_date" required /></label>',
+      '    <label>Return date<input type="date" name="return_date" /></label>',
+      '  </div>',
+      '  <div class="fare-form__row">',
+      '    <label>Passengers<input type="number" name="passengers" min="1" value="1" /></label>',
+      '    <label>Cabin<select name="cabin_class"><option value="Economy">Economy</option><option value="Premium Economy">Premium Economy</option><option value="Business">Business</option></select></label>',
+      '  </div>',
+      '  <div class="fare-form__row">',
+      '    <label>Full name<input type="text" name="name" required autocomplete="name" placeholder="Your full name" /></label>',
+      '    <label>Email<input type="email" name="email" required autocomplete="email" placeholder="you@email.com" /></label>',
+      '  </div>',
+      '  <div class="fare-form__row">',
+      '    <label>Phone<input type="tel" name="phone" required autocomplete="tel" placeholder="+44" /></label>',
+      '    <label>Trip type<select name="trip_type"><option value="Return">Return</option><option value="One Way">One Way</option></select></label>',
+      '  </div>',
+      '  <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" />',
+      '  <div class="fare-form__status" id="inline-search-status"></div>',
+      '  <button class="btn btn--primary" type="submit">Search deals</button>',
+      '</form>'
+    ].join('');
+
+    // Insert after the summary grid (before the CTA buttons)
+    var actionRow = summary.querySelector('.action-row');
+    if (actionRow && actionRow.parentNode) {
+      actionRow.parentNode.insertBefore(formWrap, actionRow);
+    } else {
+      summary.appendChild(formWrap);
+    }
+
+    var formEl = formWrap.querySelector('#inline-search-form');
+    var statusEl2 = formWrap.querySelector('#inline-search-status');
+
+    function setInlineStatus(message, type) {
+      if (!statusEl2) return;
+      statusEl2.textContent = message;
+      statusEl2.className = 'fare-form__status is-visible';
+      if (type === 'error') statusEl2.classList.add('is-error');
+      if (type === 'success') statusEl2.classList.add('is-success');
+    }
+
+    function clearInlineStatus() {
+      if (!statusEl2) return;
+      statusEl2.textContent = '';
+      statusEl2.className = 'fare-form__status';
+    }
+
+    formEl.addEventListener('submit', function (event) {
+      event.preventDefault();
+      clearInlineStatus();
+
+      var fd = new FormData(formEl);
+      var depRaw = cleanText(fd.get('departure_date'));
+      var retRaw = cleanText(fd.get('return_date'));
+
+      var payload = {
+        formType: 'landing_inline_search',
+        name: cleanText(fd.get('name')),
+        email: cleanText(fd.get('email')),
+        phone: cleanText(fd.get('phone')),
+        from: quoteFrom,
+        to: quoteTo,
+        destination: quoteDestination,
+        departureDate: depRaw,
+        returnDate: retRaw,
+        passengers: cleanText(fd.get('passengers')),
+        cabinClass: cleanText(fd.get('cabin_class')),
+        tripType: cleanText(fd.get('trip_type')) || 'Return',
+        message: 'Inline search request: ' + quoteFrom + ' -> ' + quoteTo + ' | ' + depRaw + (retRaw ? (' to ' + retRaw) : ''),
+        pageUrl: window.location.href,
+        selectedFareName: '',
+        selectedFarePrice: '',
+        selectedFareTag: 'Inline Search',
+        selectedFareDetails: '',
+        selectedFareCurrency: 'GBP',
+        website: cleanText(fd.get('website')),
+      };
+
+      if (!payload.name || !payload.email || !payload.phone || !payload.departureDate) {
+        setInlineStatus('Please complete name, email, phone, and departure date.', 'error');
+        return;
+      }
+
+      var btn = formEl.querySelector('button[type="submit"]');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Searching...';
+      }
+
+      fetch('/api/submit.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+        .then(function (res) {
+          return res.text().then(function (text) {
+            var data = null;
+            if (text) {
+              try { data = JSON.parse(text); } catch (e) { data = null; }
+            }
+            if (!res.ok) {
+              var message = data && data.error ? data.error : 'Could not search right now. Please try again.';
+              throw new Error(message);
+            }
+            return data;
+          });
+        })
+        .then(function () {
+          var depObj = parseISODate(depRaw);
+          var retObj = parseISODate(retRaw);
+          updateFareLinesWithDates(depObj, retObj);
+
+          // Update summary boxes
+          updateSearchSummaryBox('Passengers', (payload.passengers || '1') + ' Traveller');
+          updateSearchSummaryBox('Cabin', payload.cabinClass || 'Economy');
+
+          setInlineStatus('Showing tentative options for your selected dates. We’ll confirm live availability before booking.', 'success');
+
+          var fareSection = document.querySelector('.fare-list');
+          if (fareSection && fareSection.scrollIntoView) {
+            fareSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        })
+        .catch(function (error) {
+          var msg = (error && error.message) ? error.message : 'Could not search right now. Please try again.';
+          setInlineStatus(msg, 'error');
+        })
+        .finally(function () {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Search deals';
+          }
+        });
+    });
+  }
+
+  injectInlineSearchForm();
+
   var modal = document.getElementById('fare-modal');
   var form = document.getElementById('fare-quote-form');
   var pickedNameEl = modal.querySelector('[data-picked-name]');

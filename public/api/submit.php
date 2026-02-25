@@ -88,6 +88,8 @@ $requiredByType = [
   'hero_flight_search' => ['name', 'email', 'from', 'to', 'departure_date'],
   'sidebar_flight_search' => ['name', 'email', 'from', 'to', 'departure_date'],
   'landing_fare_quote' => ['name', 'email', 'phone', 'from', 'to', 'selected_fare_name'],
+  // Inline SEO landing-page search (lead-gated)
+  'landing_inline_search' => ['name', 'email', 'phone', 'from', 'to', 'departure_date'],
 ];
 
 $required = $requiredByType[$formType] ?? ['email'];
