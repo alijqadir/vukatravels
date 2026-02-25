@@ -251,7 +251,7 @@
       actionRow.insertBefore(btn2, actionRow.firstChild);
     }
 
-    var statusEl = fields.querySelector('#inline-search-status');
+    var statusEl = form.querySelector('#inline-search-status');
 
     function setInlineStatus(message, type) {
       if (!statusEl) return;
