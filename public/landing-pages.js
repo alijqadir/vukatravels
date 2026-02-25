@@ -157,68 +157,107 @@
     });
   }
 
-  function injectInlineSearchForm() {
+  function enhanceSearchSummaryToInlineForm() {
     var summary = document.querySelector('.search-summary');
     if (!summary) return;
     if (summary.querySelector('#inline-search-form')) return;
 
-    var formWrap = document.createElement('div');
-    formWrap.className = 'inline-search';
+    var grid = summary.querySelector('.search-summary__grid');
+    if (!grid) return;
 
-    formWrap.innerHTML = [
-      '<form class="fare-form" id="inline-search-form">',
+    var actionRow = summary.querySelector('.action-row');
+    if (!actionRow) return;
+
+    // Create a real <form> wrapper so Enter key works + we can disable submit.
+    var form = document.createElement('form');
+    form.className = 'inline-search-form';
+    form.id = 'inline-search-form';
+
+    // Move grid + fields + actionRow into the form.
+    summary.insertBefore(form, grid);
+    form.appendChild(grid);
+
+    // Replace selected boxes with inputs/selects (Passengers/Cabin/Trip Type)
+    function replaceBoxValue(label, html) {
+      var boxes = Array.prototype.slice.call(grid.querySelectorAll('.search-box'));
+      for (var i = 0; i < boxes.length; i += 1) {
+        var span = boxes[i].querySelector('span');
+        var strong = boxes[i].querySelector('strong');
+        if (!span || !strong) continue;
+        if (cleanText(span.textContent).toLowerCase() !== label.toLowerCase()) continue;
+        strong.innerHTML = html;
+        return;
+      }
+    }
+
+    replaceBoxValue('Trip Type', '<select name="trip_type" aria-label="Trip type"><option value="Return" selected>Return</option><option value="One Way">One Way</option></select>');
+    replaceBoxValue('Cabin', '<select name="cabin_class" aria-label="Cabin"><option value="Economy" selected>Economy</option><option value="Premium Economy">Premium Economy</option><option value="Business">Business</option></select>');
+    replaceBoxValue('Passengers', '<input type="number" name="passengers" aria-label="Passengers" min="1" value="1" style="width:100%;" />');
+
+    // Add always-visible lead-gated fields + dates (inside the same card)
+    var fields = document.createElement('div');
+    fields.className = 'fare-form';
+    fields.style.marginTop = '0.85rem';
+
+    fields.innerHTML = [
       '  <div class="fare-form__row">',
       '    <label>Full name<input type="text" name="name" required autocomplete="name" placeholder="Your full name" /></label>',
       '    <label>Email<input type="email" name="email" required autocomplete="email" placeholder="you@email.com" /></label>',
       '  </div>',
       '  <div class="fare-form__row">',
       '    <label>Phone<input type="tel" name="phone" required autocomplete="tel" placeholder="+44" /></label>',
-      '    <label>Passengers<input type="number" name="passengers" min="1" value="1" /></label>',
-      '  </div>',
-      '  <div class="fare-form__row">',
       '    <label>Departure date<input type="date" name="departure_date" required /></label>',
-      '    <label>Return date<input type="date" name="return_date" /></label>',
       '  </div>',
       '  <div class="fare-form__row">',
-      '    <label>Cabin<select name="cabin_class"><option value="Economy">Economy</option><option value="Premium Economy">Premium Economy</option><option value="Business">Business</option></select></label>',
-      '    <label>Trip type<select name="trip_type"><option value="Return">Return</option><option value="One Way">One Way</option></select></label>',
+      '    <label>Return date<input type="date" name="return_date" /></label>',
+      '    <label>Extra details<textarea name="message" placeholder="Optional: baggage, flexibility, preferred airline"></textarea></label>',
       '  </div>',
       '  <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" />',
-      '  <div class="fare-form__status" id="inline-search-status"></div>',
-      '  <button class="btn btn--primary" type="submit">Search deals</button>',
-      '</form>'
+      '  <div class="fare-form__status" id="inline-search-status"></div>'
     ].join('');
 
-    // Insert after the summary grid (before the CTA buttons)
-    var actionRow = summary.querySelector('.action-row');
-    if (actionRow && actionRow.parentNode) {
-      actionRow.parentNode.insertBefore(formWrap, actionRow);
+    form.appendChild(fields);
+
+    // Move actionRow into the form and convert primary CTA into a submit button.
+    form.appendChild(actionRow);
+
+    var primaryLink = actionRow.querySelector('.open-quote-form');
+    if (primaryLink) {
+      var submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.className = primaryLink.className;
+      submitBtn.textContent = 'Search deals';
+      primaryLink.parentNode.replaceChild(submitBtn, primaryLink);
     } else {
-      summary.appendChild(formWrap);
+      // fallback: if template differs, ensure we still have a submit button
+      var btn2 = document.createElement('button');
+      btn2.type = 'submit';
+      btn2.className = 'btn btn--primary';
+      btn2.textContent = 'Search deals';
+      actionRow.insertBefore(btn2, actionRow.firstChild);
     }
 
-    var formEl = formWrap.querySelector('#inline-search-form');
-    var statusEl2 = formWrap.querySelector('#inline-search-status');
+    var statusEl = fields.querySelector('#inline-search-status');
 
     function setInlineStatus(message, type) {
-      if (!statusEl2) return;
-      statusEl2.textContent = message;
-      statusEl2.className = 'fare-form__status is-visible';
-      if (type === 'error') statusEl2.classList.add('is-error');
-      if (type === 'success') statusEl2.classList.add('is-success');
+      if (!statusEl) return;
+      statusEl.textContent = message;
+      statusEl.className = 'fare-form__status is-visible';
+      if (type === 'error') statusEl.classList.add('is-error');
+      if (type === 'success') statusEl.classList.add('is-success');
     }
 
     function clearInlineStatus() {
-      if (!statusEl2) return;
-      statusEl2.textContent = '';
-      statusEl2.className = 'fare-form__status';
+      if (!statusEl) return;
+      statusEl.textContent = '';
+      statusEl.className = 'fare-form__status';
     }
 
-    formEl.addEventListener('submit', function (event) {
+    form.addEventListener('submit', function (event) {
       event.preventDefault();
       clearInlineStatus();
 
-      var fd = new FormData(formEl);
+      var fd = new FormData(form);
       var depRaw = cleanText(fd.get('departure_date'));
       var retRaw = cleanText(fd.get('return_date'));
 
@@ -235,7 +274,7 @@
         passengers: cleanText(fd.get('passengers')),
         cabinClass: cleanText(fd.get('cabin_class')),
         tripType: cleanText(fd.get('trip_type')) || 'Return',
-        message: 'Inline search request: ' + quoteFrom + ' -> ' + quoteTo + ' | ' + depRaw + (retRaw ? (' to ' + retRaw) : ''),
+        message: cleanText(fd.get('message')) || ('Inline search request: ' + quoteFrom + ' -> ' + quoteTo + ' | ' + depRaw + (retRaw ? (' to ' + retRaw) : '')),
         pageUrl: window.location.href,
         selectedFareName: '',
         selectedFarePrice: '',
@@ -250,7 +289,7 @@
         return;
       }
 
-      var btn = formEl.querySelector('button[type="submit"]');
+      var btn = actionRow.querySelector('button[type="submit"]');
       if (btn) {
         btn.disabled = true;
         btn.textContent = 'Searching...';
@@ -281,9 +320,9 @@
           var retObj = parseISODate(retRaw);
           updateFareLinesWithDates(depObj, retObj);
 
-          // Update summary boxes
           updateSearchSummaryBox('Passengers', (payload.passengers || '1') + ' Traveller');
           updateSearchSummaryBox('Cabin', payload.cabinClass || 'Economy');
+          updateSearchSummaryBox('Trip Type', payload.tripType || 'Return');
 
           setInlineStatus('Showing tentative options for your selected dates. We’ll confirm live availability before booking.', 'success');
 
@@ -305,7 +344,7 @@
     });
   }
 
-  injectInlineSearchForm();
+  enhanceSearchSummaryToInlineForm();
 
   var modal = document.getElementById('fare-modal');
   var form = document.getElementById('fare-quote-form');
