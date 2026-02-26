@@ -60,7 +60,7 @@
     '          <label>Cabin<select name="cabin_class"><option value="Economy">Economy</option><option value="Premium Economy">Premium Economy</option><option value="Business">Business</option></select></label>',
     '          <label>Trip type<select name="trip_type"><option value="Return">Return</option><option value="One Way">One Way</option><option value="Multi City">Multi City</option></select></label>',
     '        </div>',
-    '        <label>Extra details<textarea name="message" placeholder="Add date flexibility, baggage needs, or traveller details"></textarea></label>',
+    '',
     '        <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" />',
     '        <div class="fare-form__status" id="fare-form-status"></div>',
     '        <button class="btn btn--primary" type="submit">Send Fare Request</button>',
@@ -213,12 +213,7 @@
       box('Phone', '<input type="tel" name="phone" required autocomplete="tel" placeholder="+44" />'),
       box('Departure date', '<input type="date" name="departure_date" required />'),
       box('Return date', '<input type="date" name="return_date" />'),
-      '<div class="search-box search-box--wide">',
-      '  <span>Extra details</span>',
-      '  <div class="search-box__control">',
-      '    <textarea name="message" placeholder="Optional: baggage, flexibility, preferred airline"></textarea>',
-      '  </div>',
-      '</div>',
+      '',
       '<input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" />',
       '<div class="fare-form__status" id="inline-search-status"></div>'
     ].join('');
